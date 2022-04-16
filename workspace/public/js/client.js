@@ -9,6 +9,14 @@
 var filtersSelect = document.querySelector('select#filter');
 //视频播放的标签 
 const videoPlayer = document.getElementById("videoPlayer");
+// 截取视频保存成图片
+const snapshotBtn = document.getElementById("snapshot_Btn");
+const videoPicture = document.getElementById("video_picture");
+videoPicture.width = 320;
+videoPicture.height = 240;
+
+
+// 防止重复去获取设备列表
 var isGet = false;
 function start(){
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -75,6 +83,10 @@ videoSource.onchange = start;
 audioSource.onchange = start;
 audioOutput.onchange = start;
 // 选择特效的方法
-filtersSelect.onchange = function(){
+filtersSelect.onchange = ()=>{
 	videoPlayer.className = filtersSelect.value;
+}
+snapshotBtn.onclick = ()=>{
+    videoPicture.className = filtersSelect.value;
+  videoPicture.getContext('2d').drawImage(videoPlayer,0,0,videoPicture.width,videoPicture.height);
 }
