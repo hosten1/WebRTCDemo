@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>websocket</title>
+    <style>
+        .none {
+            -webkit-filter: none;	
+        }
+
+        .blur {
+    /* 特效模糊 */
+            -webkit-filter: blur(6px);	
+        }
+
+        .grayscale {
+    /* 特效灰度 */
+            -webkit-filter: grayscale(1); 	
+        }
+
+        .invert {
+    /* 翻转 */
+            -webkit-filter: invert(1);	
+        }
+
+        .sepia {
+    /* 特效褐色 */
+            -webkit-filter: sepia(1);
+        }
+          /* 亮度 */
+        .brightness {
+            -webkit-filter: brightness(200%);
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <label>音频输入设备:</label>
+        <!-- style="width: fit-content;" -->
+        <select id="audioSource" style="width: fit-content;"></select>
+    </div>
+    <div>
+        <label>音频输出设备:</label>
+        <select id="audioOutput" style="width: fit-content;"></select>
+    </div>
+    <div>
+        <label>视频输入设备:</label>
+        <select id="videoSource" style="width: fit-content;"></select>
+    </div>
+     <!-- 特效选择器 -->
+     <div>
+        <label>Filter:</label>
+        <select id="filter">
+            <option value="none">None</option>
+            <option value="blur">blur</option>
+            <option value="grayscale">Grayscale</option>
+            <option value="invert">Invert</option>
+            <option value="sepia">sepia</option>
+            <option value="brightness">brightness</option>
+        </select>
+    </div>
+     <video autoplay id="videoPlayer"></video>
+    <script type="test/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
+    <script type="text/javascript" src="./js/client.js"></script>
+</body>
+</html>
