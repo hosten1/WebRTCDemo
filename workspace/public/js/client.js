@@ -15,7 +15,8 @@ const videoPicture = document.getElementById("video_picture");
 videoPicture.width = 320;
 videoPicture.height = 240;
 
-
+// 获取显示的div
+const showDiv =  document.getElementById("constraints");
 // 防止重复去获取设备列表
 var isGet = false;
 function start(){
@@ -45,6 +46,12 @@ function start(){
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function (mediaStream) {
                
+                const videoTrack = mediaStream.getVideoTracks()[0];
+                //拿到video的所有约束
+                const videoConstraints = videoTrack.getSettings();
+                 showDiv.textContent =  JSON.stringify(videoConstraints,null,2);
+
+
                 videoPlayer.srcObject = mediaStream;
                 videoPlayer.onloadedmetadata = function (e) {
                     videoPlayer.play();

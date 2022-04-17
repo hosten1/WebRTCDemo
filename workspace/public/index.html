@@ -60,11 +60,31 @@
             <option value="video_brightness">brightness</option>
         </select>
     </div>
-     <video autoplay id="videoPlayer"></video>
-     <div>
-         <button id="snapshot_Btn" style="width: auto; height: fit-content;">截取视频</button>
-         <canvas id="video_picture"></canvas>
-     </div>
+    <table>
+        //行
+      <tr>
+          <td>
+            <video autoplay id="videoPlayer"></video>
+          </td>
+          <td>
+           <div id="constraints" class="output_div" style="width: 100px; margin-left: 20px;"></div>
+          </td>
+       
+      </tr>
+      <tr>
+        <td>
+            <button id="snapshot_Btn" style="width: auto; height: fit-content;">截取视频</button>
+          </td>
+          <td>
+            <canvas id="video_picture" style="margin-left: 20px;"></canvas>
+          </td>
+        
+        
+      </tr>
+
+    </table>
+     
+   
     <script type="test/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
     <script type="text/javascript" src="./js/client.js"></script>
 </body>
