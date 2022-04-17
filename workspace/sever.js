@@ -52,24 +52,6 @@ io.on('connection', function (socket) {
         // io.in(room).emit('joined',room,socket.id);
         // socket.broadcast.emit('joined',room,socket.id);
     });
-    socket.on('leave', (room) => {
-        console.log("====>leave" + JSON.stringify(request));
-         // 获取socket的房间
-         var myRoom = io.sockets.adapter.rooms[room];
-         var users = 0;
-         if (myRoom) {
-             users =  Object.keys(myRoom.sockets).length;
-         }
-        //加入io的到房间里
-        socket.leave(room);
-       
-    //    socket.emit('joined',room,socket.id);
-    // 给除了自己之外的所有人发
-    //    io.to(room).emit('joined',room,socket.id);
-    // 给房间里所有人发
-        // socket.in(room).emit('joined',room,socket.id);
-        socket.broadcast.emit('leave',room,socket.id);
-    });
     socket.on('message', (room,data) => {
         console.log("====>message" + JSON.stringify(data));
         io.in(room).emit('message', room, socket.id, data)//房间内所有人
