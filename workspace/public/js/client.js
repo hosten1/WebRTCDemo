@@ -46,9 +46,11 @@ function start(){
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function (mediaStream) {
                
+                // 获取视频的track
                 const videoTrack = mediaStream.getVideoTracks()[0];
                 //拿到video的所有约束
                 const videoConstraints = videoTrack.getSettings();
+                // 转成jsonstring显示到div标签上
                  showDiv.textContent =  JSON.stringify(videoConstraints,null,2);
 
 

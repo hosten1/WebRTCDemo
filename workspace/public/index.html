@@ -35,21 +35,21 @@
     </style>
 </head>
 <body>
-    <div>
+    <div style="margin-top: 10px;">
         <label>音频输入设备:</label>
         <!-- style="width: fit-content;" -->
         <select id="audioSource" style="width: fit-content;"></select>
     </div>
-    <div>
+    <div style="margin-top: 10px;">
         <label>音频输出设备:</label>
         <select id="audioOutput" style="width: fit-content;"></select>
     </div>
-    <div>
+    <div style="margin-top: 10px;">
         <label>视频输入设备:</label>
         <select id="videoSource" style="width: fit-content;"></select>
     </div>
      <!-- 特效选择器 -->
-     <div>
+     <div style="margin-top: 20px;">
         <label>Filter:</label>
         <select id="filter">
             <option value="video_none">None</option>
@@ -60,9 +60,10 @@
             <option value="video_brightness">brightness</option>
         </select>
     </div>
-    <table>
-        //行
+    <table style="margin-top: 20px;">
+        <!-- //行 -->
       <tr>
+           <!-- //列 -->
           <td>
             <video autoplay id="videoPlayer"></video>
           </td>
