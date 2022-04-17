@@ -1,39 +1,41 @@
 <!DOCTYPE HTML>
 <html>
+
 <head>
     <meta charset="utf-8">
     <title>websocket</title>
     <style>
         .video_none {
-            -webkit-filter: none;	
+            -webkit-filter: none;
         }
 
         .video_blur {
-    /* 特效模糊 */
-            -webkit-filter: blur(6px);	
+            /* 特效模糊 */
+            -webkit-filter: blur(6px);
         }
 
         .video_grayscale {
-    /* 特效灰度 */
-            -webkit-filter: grayscale(1); 	
+            /* 特效灰度 */
+            -webkit-filter: grayscale(1);
         }
 
         .video_invert {
-    /* 翻转 */
-            -webkit-filter: invert(1);	
+            /* 翻转 */
+            -webkit-filter: invert(1);
         }
 
         .video_sepia {
-    /* 特效褐色 */
+            /* 特效褐色 */
             -webkit-filter: sepia(1);
         }
-          /* 亮度 */
+
+        /* 亮度 */
         .video_brightness {
             -webkit-filter: brightness(200%);
         }
-
     </style>
 </head>
+
 <body>
     <div style="margin-top: 10px;">
         <label>音频输入设备:</label>
@@ -48,8 +50,8 @@
         <label>视频输入设备:</label>
         <select id="videoSource" style="width: fit-content;"></select>
     </div>
-     <!-- 特效选择器 -->
-     <div style="margin-top: 20px;">
+    <!-- 特效选择器 -->
+    <div style="margin-top: 20px;">
         <label>Filter:</label>
         <select id="filter">
             <option value="video_none">None</option>
@@ -62,47 +64,49 @@
     </div>
     <table style="margin-top: 20px;">
         <!-- //行 -->
-      <tr>
-           <!-- //列 -->
-          <td>
-            <video autoplay playsinline id="videoPlayer"></video>
-          </td>
-          <td>
-            <video playsinline id="recoderVideoShow"></video>
-          </td>
-          <td>
-           <div id="constraints" class="output_div" style="width: 100px; margin-left: 20px;"></div>
-          </td>
-       
-      </tr>
-      <tr>
-        <td>
-            <button id="record_Btn" style="width: auto; height: fit-content;">Start Record</button>
-        </td>
-        <td>
-            <button id="recvPlay_Btn" style="width: auto; height: fit-content;" disabled>播放</button>
-        </td>
-        <td>
-            <button id="download_Btn" style="width: auto; height: fit-content;" disabled>下载</button>
-        </td>
-        
-        
-      </tr>
-      <tr>
-        <td>
-            <button id="snapshot_Btn" style="width: auto; height: fit-content;">截取视频</button>
-        </td>
-         <td>
-            <canvas id="video_picture" style="margin-left: 20px;"></canvas>
-        </td>
-        
-        
-      </tr>
+        <tr>
+            <!-- //列 -->
+            <td>
+                <video autoplay playsinline id="videoPlayer"></video>
+            </td>
+            <td>
+                <!-- 用于录制的视频显示 -->
+                <video playsinline id="recoderVideoShow"></video>
+            </td>
+            <td>
+                <!-- 用于视频的约束信息显示 -->
+                <div id="constraints" class="output_div" style="width: 100px; margin-left: 20px;"></div>
+            </td>
+
+        </tr>
+        <tr>
+            <td>
+                <button id="record_Btn" style="width: auto; height: fit-content;">Start Record</button>
+            </td>
+            <td>
+                <button id="recvPlay_Btn" style="width: auto; height: fit-content;" disabled>播放</button>
+            </td>
+            <td>
+                <button id="download_Btn" style="width: auto; height: fit-content;" disabled>下载</button>
+            </td>
+
+
+        </tr>
+        <tr>
+            <td>
+                <button id="snapshot_Btn" style="width: auto; height: fit-content;">截取视频</button>
+            </td>
+            <td>
+                <canvas id="video_picture" style="margin-left: 20px;"></canvas>
+            </td>
+
+        </tr>
 
     </table>
-     
-   
+
+
     <script type="test/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
     <script type="text/javascript" src="./js/client.js"></script>
 </body>
+
 </html>
