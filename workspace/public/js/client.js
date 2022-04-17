@@ -15,6 +15,17 @@ const videoPicture = document.getElementById("video_picture");
 videoPicture.width = 320;
 videoPicture.height = 240;
 
+
+//录制功能
+var mediaRecorder;
+var buffer;
+const recoderVideoShow = document.getElementById("recoderVideoShow");
+const recordBtn = document.getElementById("record_Btn");
+const recvPlayBtn = document.getElementById("recvPlay_Btn");
+const downloadBtn = document.getElementById("download_Btn");
+
+
+
 // 获取显示的div
 const showDiv =  document.getElementById("constraints");
 // 防止重复去获取设备列表
@@ -45,7 +56,8 @@ function start(){
     
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function (mediaStream) {
-               
+               // 保存到window全局对象中，方便后续使用
+               window.stream = mediaStream;
                 // 获取视频的track
                 const videoTrack = mediaStream.getVideoTracks()[0];
                 //拿到video的所有约束
@@ -98,4 +110,109 @@ filtersSelect.onchange = ()=>{
 snapshotBtn.onclick = ()=>{
     videoPicture.className = filtersSelect.value;
   videoPicture.getContext('2d').drawImage(videoPlayer,0,0,videoPicture.width,videoPicture.height);
+}
+function handlerDataRecord(e){
+  if (e && e.data && e.data.size > 0) {
+      //保存数据 在二进制数组
+   buffer.push(e.data);
+  }
+} 
+async function startRecord(){
+    //   console.log(mediaRecorder.stat);
+      console.log("recorder started");
+      recoderVideoShow.style.background = "red";
+      recoderVideoShow.style.color = "black";
+
+      buffer = [];
+    var  option  = {
+        mimeType:'video/webm;codecs=vp8'
+    }
+    if (!MediaRecorder.isTypeSupported(option.mimeType)) {
+        console.error('mimeType 是不被支持的:${option.mimeType}');
+        return;
+    }
+    try {
+        mediaRecorder = new MediaRecorder(window.stream,option);
+        mediaRecorder.ondataavailable = handlerDataRecord;
+
+        mediaRecorder.onstop = function(e) {
+            console.log("data available after MediaRecorder.stop() called.");
+      
+            // var clipName = prompt('Enter a name for your sound clip');
+      
+            // var clipContainer = document.createElement('article');
+            // var clipLabel = document.createElement('p');
+            // var audio = document.createElement('audio');
+            // var deleteButton = document.createElement('button');
+      
+            // clipContainer.classList.add('clip');
+            // audio.setAttribute('controls', '');
+            // deleteButton.innerHTML = "Delete";
+            // clipLabel.innerHTML = clipName;
+      
+            // clipContainer.appendChild(audio);
+            // clipContainer.appendChild(clipLabel);
+            // clipContainer.appendChild(deleteButton);
+            // soundClips.appendChild(clipContainer);
+      
+            // audio.controls = true;
+            // var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+            // chunks = [];
+            // var audioURL = URL.createObjectURL(blob);
+            // audio.src = audioURL;
+            // console.log("recorder stopped");
+      
+            // deleteButton.onclick = function(e) {
+            //   evtTgt = e.target;
+            //   evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
+            // }
+          }
+          mediaRecorder.start(10);
+    } catch (error) {
+        console.error('failed Create meidaRecord ' + error);
+    }
+   
+
+}
+async function stopRecord(){
+    
+    // console.log(mediaRecorder.state);
+    console.log("recorder stopped");
+    mediaRecorder.stop();
+    recoderVideoShow.style.background = "";
+    recoderVideoShow.style.color = "";
+}
+recordBtn.onclick = ()=>{
+    if(recordBtn.textContent === 'Start Record'){
+        recordBtn.textContent = 'Stop Record';
+        recvPlayBtn.disabled = true;
+        downloadBtn.disabled = true;
+        startRecord();
+       
+        
+    }else{
+        recordBtn.textContent = 'Start Record';
+        recvPlayBtn.disabled = false;
+        downloadBtn.disabled = false;
+        stopRecord();
+       
+    }
+}
+recvPlayBtn.onclick = ()=>{
+    var blob = new Blob(buffer,{type: 'video/webm'});
+    recoderVideoShow.src = window.URL.createObjectURL(blob);
+    recoderVideoShow.srcObject = null;
+    recoderVideoShow.controls = true;
+    recoderVideoShow.play();
+}
+downloadBtn.onclick = async ()=>{
+    //保存文件
+    var blob = new Blob(buffer,{type: 'video/webm'});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    a.download = 'aaa.webm';
+    a.click();
+
 }

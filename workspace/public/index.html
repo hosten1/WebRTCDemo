@@ -65,7 +65,10 @@
       <tr>
            <!-- //列 -->
           <td>
-            <video autoplay id="videoPlayer"></video>
+            <video autoplay playsinline id="videoPlayer"></video>
+          </td>
+          <td>
+            <video playsinline id="recoderVideoShow"></video>
           </td>
           <td>
            <div id="constraints" class="output_div" style="width: 100px; margin-left: 20px;"></div>
@@ -74,11 +77,24 @@
       </tr>
       <tr>
         <td>
+            <button id="record_Btn" style="width: auto; height: fit-content;">Start Record</button>
+        </td>
+        <td>
+            <button id="recvPlay_Btn" style="width: auto; height: fit-content;" disabled>播放</button>
+        </td>
+        <td>
+            <button id="download_Btn" style="width: auto; height: fit-content;" disabled>下载</button>
+        </td>
+        
+        
+      </tr>
+      <tr>
+        <td>
             <button id="snapshot_Btn" style="width: auto; height: fit-content;">截取视频</button>
-          </td>
-          <td>
+        </td>
+         <td>
             <canvas id="video_picture" style="margin-left: 20px;"></canvas>
-          </td>
+        </td>
         
         
       </tr>
