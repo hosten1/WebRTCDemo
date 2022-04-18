@@ -1,5 +1,7 @@
 'use strict'
 
+const startReocrdBtn = document.getElementById("startReocrd_btn");
+
 //获取 DOM 树节点
 const audioSource = document.getElementById("audioSource");
 const audioOutput = document.getElementById("audioOutput");
@@ -113,7 +115,11 @@ function start() {
             }); // 总是在最后检查错误
     }
 }
-start();
+
+startReocrdBtn.onclick = ()=>{
+    start();
+    start.recordBtn.disabled = true;
+}
 videoSource.onchange = start;
 audioSource.onchange = start;
 audioOutput.onchange = start;
