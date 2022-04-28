@@ -1,7 +1,7 @@
 'use strict'
 
 const startReocrdBtn = document.getElementById("startReocrd_btn");
-
+const stopReocrdBtn  = document.getElementById("stopReocrd_btn");
 //获取 DOM 树节点
 const audioSource = document.getElementById("audioSource");
 const audioOutput = document.getElementById("audioOutput");
@@ -11,6 +11,7 @@ const videoSource = document.getElementById("videoSource");
 var filtersSelect = document.querySelector('select#filter');
 //视频播放的标签 
 const videoPlayer = document.getElementById("videoPlayer");
+const remoteVideoPlayer = document.getElementById("remoteVideoPlayer");
 // 截取视频保存成图片
 const snapshotBtn = document.getElementById("snapshot_Btn");
 const videoPicture = document.getElementById("video_picture");
@@ -42,87 +43,155 @@ var btnSend = document.querySelector('button#send');
 
 var socket;
 var room;
-
+var  localStream;
 
 // 防止重复去获取设备列表
 var isGet = false;
-function start() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.write('当前浏览器不支持 getUserMedia()！！！！/n');
-    } else {
-
-        // 想要获取一个最接近 1280x720 的相机分辨率
-        const videoDeviceIds = videoSource.value;
-        const audioDeviceIds = audioSource.value;
-        console.log('刷新了 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
-        var constraints = {
-            audio: {
-                noiseSuppression: true, // 降噪
-                echoCancellation: true,// 回音消除
-                deviceId: videoDeviceIds ? videoDeviceIds : undefined
-            },
-            video: {
-                width: 320,
-                height: 240,
-                frameRate: { ideal: 10, max: 15 },
-                deviceId: audioDeviceIds ? audioDeviceIds : undefined
-            },
-
+var isStartRecored = false;
+function startWebCam() {
+    return new Promise((resolve, reject)=>{
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            document.write('当前浏览器不支持 getUserMedia()！！！！/n');
+            return reject('当前浏览器不支持 getUserMedia()！！！！/n');
+        } else {
+    
+            // 想要获取一个最接近 1280x720 的相机分辨率
+            const videoDeviceIds = videoSource.value;
+            const audioDeviceIds = audioSource.value;
+            console.log('刷新了 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
+            var constraints = {
+                audio: {
+                    noiseSuppression: true, // 降噪
+                    echoCancellation: true,// 回音消除
+                    deviceId: videoDeviceIds ? videoDeviceIds : undefined
+                },
+                video: {
+                    width: 320,
+                    height: 240,
+                    frameRate: { ideal: 10, max: 15 },
+                    deviceId: audioDeviceIds ? audioDeviceIds : undefined
+                },
+    
+            };
+    
+            navigator.mediaDevices.getUserMedia(constraints).then(function (mediaStream) {
+                    localStream = mediaStream;
+                    // 获取视频的track
+                    const videoTrack = mediaStream.getVideoTracks()[0];
+                    //拿到video的所有约束
+                    const videoConstraints = videoTrack.getSettings();
+                    // 转成jsonstring显示到div标签上
+                    showDiv.textContent = JSON.stringify(videoConstraints, null, 2);
+    
+    
+                    videoPlayer.srcObject = mediaStream;
+                    videoPlayer.onloadedmetadata = function (e) {
+                        videoPlayer.play();
+                    };
+                    console.log('刷新了 3333 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
+    
+                    // 获取权限后开始获取设备
+                    return resolve(mediaStream);
+                }).catch((err) => {
+                    return reject(err);
+                    console.log(err.name + ": " + err.message);
+                }); // 总是在最后检查错误
+        }
+    });
+}
+function getUserMedia(){
+    return new Promise((resolve, reject)=>{
+        navigator.mediaDevices.enumerateDevices().then((devices) => {
+            if (!isGet) {
+                isGet = true;
+                devices.forEach((devInfo) => {
+                    console.log('kind = ' + devInfo.kind
+                        + ' lable = ' + devInfo.label
+                        + ' id = ' + devInfo.deviceId
+                        + ' groupId = ', devInfo.groupId);
+    
+                    var option = document.createElement('option');
+                    option.text = devInfo.label;
+                    option.value = devInfo.deviceId;
+                    if (devInfo.kind === 'audioinput') {
+                        audioSource.appendChild(option);
+                    } else if (devInfo.kind === 'audiooutput') {
+                        audioOutput.appendChild(option);
+                    } else if (devInfo.kind === 'videoinput') {
+                        videoSource.appendChild(option);
+                    }
+                });
+            }
+            resolve(devices);
+        });
+    });
+}
+let peerconnetion = null;
+// 点击按钮初始化webrtc
+startReocrdBtn.onclick = async ()=>{
+    if (!isStartRecored) {
+        isStartRecored = true;
+        console.log('开始初始化摄像头。。。。');
+        await startWebCam();
+        await getUserMedia();
+        console.log('结束初始化摄像头。。。。');
+        startReocrdBtn.textContent = '停止';
+        const config = {
+            bundlePolicy: 'balanced',
+            // certificates?: RTCCertificate[];
+            // iceCandidatePoolSize?: number;
+            iceTransportPolicy: "all",//  public relay
+            rtcpMuxPolicy : 'negotiate',
+            iceServers: [
+                {
+                  urls: "turn:www.lymggylove.top:3478",
+                  username: "lym",
+                  credential: "123456"
+              }
+          ]
         };
-
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(function (mediaStream) {
-                // 保存到window全局对象中，方便后续使用
-                window.stream = mediaStream;
-                // 获取视频的track
-                const videoTrack = mediaStream.getVideoTracks()[0];
-                //拿到video的所有约束
-                const videoConstraints = videoTrack.getSettings();
-                // 转成jsonstring显示到div标签上
-                showDiv.textContent = JSON.stringify(videoConstraints, null, 2);
-
-
-                videoPlayer.srcObject = mediaStream;
-                videoPlayer.onloadedmetadata = function (e) {
-                    videoPlayer.play();
-                };
-                // 获取权限后开始获取设备
-                return navigator.mediaDevices.enumerateDevices();
-            }).then((devices) => {
-                if (!isGet) {
-                    isGet = true;
-                    devices.forEach((devInfo) => {
-                        console.log('kind = ' + devInfo.kind
-                            + ' lable = ' + devInfo.label
-                            + ' id = ' + devInfo.deviceId
-                            + ' groupId = ', devInfo.groupId);
-
-                        var option = document.createElement('option');
-                        option.text = devInfo.label;
-                        option.value = devInfo.deviceId;
-                        if (devInfo.kind === 'audioinput') {
-                            audioSource.appendChild(option);
-                        } else if (devInfo.kind === 'audiooutput') {
-                            audioOutput.appendChild(option);
-                        } else if (devInfo.kind === 'videoinput') {
-                            videoSource.appendChild(option);
-                        }
-                    });
+        peerconnetion = new RTCPeerConnection(config);
+        peerconnetion.ontrack = (ev)=>{
+            if (ev.streams && ev.streams[0]) {
+                remoteVideoPlayer.srcObject = ev.streams[0];
+              } else {
+                if (!inboundStream) {
+                  inboundStream = new MediaStream();
+                  remoteVideoPlayer.srcObject = inboundStream;
                 }
-
-            }).catch((err) => {
-                console.log(err.name + ": " + err.message);
-            }); // 总是在最后检查错误
+                inboundStream.addTrack(ev.track);
+              }
+                // if (trackEvent.track.kind === 'video') {
+                //     remoteVideoPlayer.srcObject = trackEvent[0];
+                // }
+        };
+        peerconnetion.onicecandidate = (ev)=>{
+            console.log('=======>'+JSON.stringify(ev.candidate));
+        };
+        //添加本地媒体流
+        for (const track of localStream.getTracks()) {
+            peerconnetion.addTrack(track);
+         }
+        const offerOption = {
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+        };
+        const offerSdp =   await peerconnetion.createOffer(offerOption);
+        const err = await peerconnetion.setLocalDescription(offerSdp);
+    }else{
+        isStartRecored = false;
+        startReocrdBtn.textContent = '开始';
+        // window.stream.active = false;
     }
+    
 }
+//     结束webrtc 
+stopReocrdBtn.onclick = async  () => {
 
-startReocrdBtn.onclick = ()=>{
-    start();
-    start.recordBtn.disabled = true;
 }
-videoSource.onchange = start;
-audioSource.onchange = start;
-audioOutput.onchange = start;
+// videoSource.onchange = start;
+// audioSource.onchange = start;
+// audioOutput.onchange = start;
 // 选择特效的方法
 filtersSelect.onchange = () => {
     videoPlayer.className = filtersSelect.value;
@@ -130,12 +199,6 @@ filtersSelect.onchange = () => {
 snapshotBtn.onclick = () => {
     videoPicture.className = filtersSelect.value;
     videoPicture.getContext('2d').drawImage(videoPlayer, 0, 0, videoPicture.width, videoPicture.height);
-}
-function handlerDataRecord(e) {
-    if (e && e.data && e.data.size > 0) {
-        //保存数据 在二进制数组
-        buffer.push(e.data);
-    }
 }
 async function startRecord() {
     //   console.log(mediaRecorder.stat);
@@ -153,40 +216,17 @@ async function startRecord() {
         return;
     }
     try {
-        mediaRecorder = new MediaRecorder(window.stream, option);
-        mediaRecorder.ondataavailable = handlerDataRecord;
+        mediaRecorder = new MediaRecorder(localStream, option);
+        mediaRecorder.ondataavailable = (e)=>{
+            if (e && e.data && e.data.size > 0) {
+                //保存数据 在二进制数组
+                buffer.push(e.data);
+            }
+        };
 
         mediaRecorder.onstop = function (e) {
             console.log("data available after MediaRecorder.stop() called.");
 
-            // var clipName = prompt('Enter a name for your sound clip');
-
-            // var clipContainer = document.createElement('article');
-            // var clipLabel = document.createElement('p');
-            // var audio = document.createElement('audio');
-            // var deleteButton = document.createElement('button');
-
-            // clipContainer.classList.add('clip');
-            // audio.setAttribute('controls', '');
-            // deleteButton.innerHTML = "Delete";
-            // clipLabel.innerHTML = clipName;
-
-            // clipContainer.appendChild(audio);
-            // clipContainer.appendChild(clipLabel);
-            // clipContainer.appendChild(deleteButton);
-            // soundClips.appendChild(clipContainer);
-
-            // audio.controls = true;
-            // var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
-            // chunks = [];
-            // var audioURL = URL.createObjectURL(blob);
-            // audio.src = audioURL;
-            // console.log("recorder stopped");
-
-            // deleteButton.onclick = function(e) {
-            //   evtTgt = e.target;
-            //   evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
-            // }
         }
         mediaRecorder.start(10);
     } catch (error) {
@@ -245,6 +285,12 @@ btnConnect.onclick = () => {
 
     //recieve message
     socket.on('joined', (room, id) => {
+        btnConnect.disabled = true;
+        btnLeave.disabled = false;
+        inputArea.disabled = false;
+        btnSend.disabled = false;
+    });
+    socket.on('otherJoined', (room, id) => {
         btnConnect.disabled = true;
         btnLeave.disabled = false;
         inputArea.disabled = false;

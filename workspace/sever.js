@@ -46,6 +46,9 @@ io.on('connection', function (socket) {
             users =  Object.keys(myRoom.sockets).length;
         }
        socket.emit('joined',room,socket.id);
+       if (users > 1){
+          socket.to(room).emit('otherJoined',room,socket.id);
+       }
     // 给除了自己之外的所有人发
     //    socket.to(room).emit('joined',room,socket.id);
     // 给房间里所有人发
@@ -54,7 +57,7 @@ io.on('connection', function (socket) {
     });
     socket.on('message', (room,data) => {
         console.log("====>message" + JSON.stringify(data));
-        io.in(room).emit('message', room, socket.id, data)//房间内所有人
+        socket.to(room).emit('message', room, socket.id, data)//房间除自己内所有人
     });
     socket.on('leave', (room)=> {
 		var myRoom = sockio.sockets.adapter.rooms[room];
@@ -62,9 +65,9 @@ io.on('connection', function (socket) {
 		//users - 1;
 
 		logger.log('the number of user in room is: ' + (users-1));
-
+        socket.emit('leaved', room, socket.id);	
+        socket.to(room).emit('leaved', room, socket.id);//除自己之外
 		socket.leave(room);
-	 	socket.emit('leaved', room, socket.id);	
 	 	//socket.to(room).emit('joined', room, socket.id);//除自己之外
 		//io.in(room).emit('joined', room, socket.id)//房间内所有人
 	 	//socket.broadcast.emit('joined', room, socket.id);//除自己，全部站点	
