@@ -48,6 +48,13 @@ var  localStream;
 // 防止重复去获取设备列表
 var isGet = false;
 var isStartRecored = false;
+// 是不是主角
+var isOffer = true;
+var recvSdp = {
+    sdp: null,
+    type: null
+};
+var selfid = '';
 function startWebCam() {
     return new Promise((resolve, reject)=>{
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -127,57 +134,102 @@ function getUserMedia(){
     });
 }
 let peerconnetion = null;
-// 点击按钮初始化webrtc
-startReocrdBtn.onclick = async ()=>{
-    if (!isStartRecored) {
-        isStartRecored = true;
-        console.log('开始初始化摄像头。。。。');
-        await startWebCam();
-        await getUserMedia();
-        console.log('结束初始化摄像头。。。。');
-        startReocrdBtn.textContent = '停止';
-        const config = {
-            bundlePolicy: 'balanced',
-            // certificates?: RTCCertificate[];
-            // iceCandidatePoolSize?: number;
-            iceTransportPolicy: "all",//  public relay
-            rtcpMuxPolicy : 'negotiate',
-            iceServers: [
-                {
-                  urls: "turn:www.lymggylove.top:3478",
-                  username: "lym",
-                  credential: "123456"
-              }
-          ]
-        };
-        peerconnetion = new RTCPeerConnection(config);
-        peerconnetion.ontrack = (ev)=>{
-            if (ev.streams && ev.streams[0]) {
-                remoteVideoPlayer.srcObject = ev.streams[0];
-              } else {
-                if (!inboundStream) {
-                  inboundStream = new MediaStream();
-                  remoteVideoPlayer.srcObject = inboundStream;
-                }
-                inboundStream.addTrack(ev.track);
-              }
-                // if (trackEvent.track.kind === 'video') {
-                //     remoteVideoPlayer.srcObject = trackEvent[0];
-                // }
-        };
-        peerconnetion.onicecandidate = (ev)=>{
-            console.log('=======>'+JSON.stringify(ev.candidate));
-        };
-        //添加本地媒体流
-        for (const track of localStream.getTracks()) {
-            peerconnetion.addTrack(track);
-         }
+
+async function InitPeerconnect(){
+    console.log('开始初始化摄像头。。。。');
+    await startWebCam();
+    await getUserMedia();
+    console.log('结束初始化摄像头。。。。');
+    const config = {
+        bundlePolicy: 'balanced',
+        // certificates?: RTCCertificate[];
+        // iceCandidatePoolSize?: number;
+        iceTransportPolicy: "all",//  public relay
+        rtcpMuxPolicy : 'negotiate',
+        iceServers: [
+            {
+              urls: "turn:www.lymggylove.top:3478",
+              username: "lym",
+              credential: "123456"
+          }
+      ]
+    };
+    peerconnetion = new RTCPeerConnection(config);
+    peerconnetion.ontrack = (ev)=>{
+        if (ev.streams && ev.streams[0]) {
+            remoteVideoPlayer.srcObject = ev.streams[0];
+          } else {
+            if (!inboundStream) {
+              inboundStream = new MediaStream();
+              remoteVideoPlayer.srcObject = inboundStream;
+            }
+            inboundStream.addTrack(ev.track);
+          }
+            // if (trackEvent.track.kind === 'video') {
+            //     remoteVideoPlayer.srcObject = trackEvent[0];
+            // }
+    };
+    peerconnetion.onicecandidate = async (ev)=>{
+        console.log('=======>'+JSON.stringify(ev.candidate));
+        if (socket) {
+            await  socket.emit('message',room,{
+                  type:2,
+                  candidate:ev.candidate
+                   });
+          }
+    };
+    //添加本地媒体流
+    for (const track of localStream.getTracks()) {
+        peerconnetion.addTrack(track);
+     }
+    if (isOffer) {
         const offerOption = {
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
         };
         const offerSdp =   await peerconnetion.createOffer(offerOption);
-        const err = await peerconnetion.setLocalDescription(offerSdp);
+        if (socket) {
+          await  socket.emit('message',room,{
+                type:0,
+                sdp:offerSdp
+                 });
+        }
+        const errLocalDescription = await peerconnetion.setLocalDescription(offerSdp);
+        if (errLocalDescription) {
+            console.error('setLocalDescription err :'+JSON.stringify(offerSdp));
+            return;
+        }
+    }else{
+        const answerOption = {
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+        };
+        // RTCSessionDescriptionInit init = 
+        const errsetRemoteDescription =  await peerconnetion.setRemoteDescription(recvSdp);
+        if (errsetRemoteDescription) {
+            console.error('answer setRemoteDescription err :'+JSON.stringify(recvSdp));
+            return;
+        }
+        const answerSDP = await peerconnetion.createAnswer(answerOption);
+        if (socket) {
+            await  socket.emit('message',room,{
+                  type:1,
+                  sdp:answerSDP
+                   });
+          }
+        //发送出去
+       const setLocalDescriptionErr = await peerconnetion.setLocalDescription(answerSDP);
+
+    }
+   
+}
+// 点击按钮初始化webrtc
+startReocrdBtn.onclick = ()=>{
+    if (!isStartRecored) {
+        isStartRecored = true;
+        startReocrdBtn.textContent = '停止';
+        isOffer = true;
+        InitPeerconnect();
     }else{
         isStartRecored = false;
         startReocrdBtn.textContent = '开始';
@@ -285,12 +337,17 @@ btnConnect.onclick = () => {
 
     //recieve message
     socket.on('joined', (room, id) => {
+        if (selfid.length < 1) {
+            selfid = id
+        }
         btnConnect.disabled = true;
         btnLeave.disabled = false;
         inputArea.disabled = false;
         btnSend.disabled = false;
     });
     socket.on('otherJoined', (room, id) => {
+        outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
+        outputArea.value = outputArea.value + id + '\r';
         btnConnect.disabled = true;
         btnLeave.disabled = false;
         inputArea.disabled = false;
@@ -308,7 +365,32 @@ btnConnect.onclick = () => {
 
     socket.on('message', (room, id, data) => {
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + data + '\r';
+        outputArea.value = outputArea.value + JSON.stringify(data)  + '\r';
+        if (id === selfid) {
+            return;
+        }
+        const type = data.type;
+        switch (type) {
+            case 0:{// offer
+            isOffer = false;
+            recvSdp = data.sdp;
+            InitPeerconnect();
+            }
+                break;
+            case 1:{// answer
+              peerconnetion.setRemoteDescription(data.sdp);
+            }
+                break;
+            case 2:{// candidate
+              peerconnetion.addcandidate(data.candidate);
+            }
+                break;
+        
+            default:
+                break;
+        }
+        // outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
+        // outputArea.value = outputArea.value + data + '\r';
     });
 
     socket.on('disconnect', (socket) => {
