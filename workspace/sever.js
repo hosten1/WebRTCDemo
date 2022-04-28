@@ -60,11 +60,11 @@ io.on('connection', function (socket) {
         socket.to(room).emit('message', room, socket.id, data)//房间除自己内所有人
     });
     socket.on('leave', (room)=> {
-		var myRoom = sockio.sockets.adapter.rooms[room];
+		var myRoom = io.sockets.adapter.rooms[room];
 		var users = Object.keys(myRoom.sockets).length;
 		//users - 1;
 
-		logger.log('the number of user in room is: ' + (users-1));
+		console.log('the number of user in room is: ' + (users-1));
         socket.emit('leaved', room, socket.id);	
         socket.to(room).emit('leaved', room, socket.id);//除自己之外
 		socket.leave(room);
