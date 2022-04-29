@@ -14,6 +14,7 @@ const videoPlayer = document.getElementById("videoPlayer");
 const remoteVideoPlayer = document.getElementById("remoteVideoPlayer");
 // 截取视频保存成图片
 const snapshotBtn = document.getElementById("snapshot_Btn");
+
 const videoPicture = document.getElementById("video_picture");
 videoPicture.width = 320;
 videoPicture.height = 240;
@@ -24,6 +25,8 @@ var mediaRecorder;
 var buffer;
 const recoderVideoShow = document.getElementById("recoderVideoShow");
 const recordBtn = document.getElementById("record_Btn");
+recordBtn.disabled = true;
+snapshotBtn.disabled = true;
 const recvPlayBtn = document.getElementById("recvPlay_Btn");
 const downloadBtn = document.getElementById("download_Btn");
 
@@ -34,7 +37,9 @@ const showDiv = document.getElementById("constraints");
 
 // 房间聊天功能
 var userName = document.querySelector('input#username');
+userName.value = randomString(6);
 var inputRoom = document.querySelector('input#room');
+inputRoom.value = 123456;
 var btnConnect = document.querySelector('button#connect');
 var btnLeave = document.querySelector('button#leave');
 var outputArea = document.querySelector('textarea#output');
@@ -49,7 +54,8 @@ var localStream;
 var isGet = false;
 var isStartRecored = false;
 var isSetRemote = false;
-// 是不是主角
+// 是不是主叫
+let peerconnetion = null;
 var isOffer = true;
 var recvSdp = {
     sdp: null,
@@ -57,6 +63,14 @@ var recvSdp = {
 };
 var cacheCandidateMsg = [];
 var selfid = '';
+
+function randomString(length) {
+    var str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var result = '';
+    for (var i = length; i > 0; --i) 
+        result += str[Math.floor(Math.random() * str.length)];
+    return result;
+}
 function startWebCam() {
     return new Promise((resolve, reject) => {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -135,7 +149,6 @@ function getUserMedia() {
         });
     });
 }
-let peerconnetion = null;
 
 async function InitPeerconnect() {
     console.log('开始初始化摄像头。。。。');
@@ -246,6 +259,7 @@ function peerCloseFun ()  {
     isOffer = true;
     recvSdp = null;
     inputArea.value = '';
+    peerconnetion = null;
 }
 // videoSource.onchange = start;
 // audioSource.onchange = start;
@@ -355,6 +369,8 @@ btnConnect.onclick = () => {
         btnLeave.disabled = false;
         inputArea.disabled = false;
         btnSend.disabled = false;
+        recordBtn.disabled = false;
+        snapshotBtn.disabled = false;
        
     });
     socket.on('otherJoined', (room, id) => {
@@ -374,6 +390,8 @@ btnConnect.onclick = () => {
         btnLeave.disabled = true;
         inputArea.disabled = true;
         btnSend.disabled = true;
+        recordBtn.disabled = true;
+        snapshotBtn.disabled = true;
         peerCloseFun();
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         outputArea.value = outputArea.value + 'leaved'+ id + '\r';
