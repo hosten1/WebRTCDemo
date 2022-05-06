@@ -69,6 +69,18 @@
             <option value="video_brightness">brightness</option>
         </select>
     </div>
+    <div style="margin-top: 10px;">
+        <label>视频输入带宽限制:</label>
+        <select id="videoBindwidth" style="width: fit-content;" disabled>
+            <option value="3000" selected>3000kbps</option>
+            <option value="2000">2000kbps</option>
+            <option value="1000">1000kbps</option>
+            <option value="800">800kbps</option>
+            <option value="500">500kbps</option>
+            <option value="250">250kbps</option>
+            <option value="125">125kbps</option>
+        </select>
+    </div>
     <table style="margin-top: 20px;">
         <!-- //行 -->
         <tr>
@@ -89,6 +101,18 @@
             </td>
 
         </tr>
+        <!-- <tr>
+            <td>
+                <div>比特率</div>
+                <canvas id="birateCanvas"></canvas>
+            </td>
+            <td>
+                <div>每秒发送的包数</div>
+                <canvas id="packetsCanvas"></canvas>
+            </td>
+            </td>
+
+        </tr> -->
         <tr>
             <td>
                 <button id="record_Btn" style="width: auto; height: fit-content;">Start Record</button>

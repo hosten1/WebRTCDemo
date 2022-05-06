@@ -46,6 +46,8 @@ var outputArea = document.querySelector('textarea#output');
 var inputArea = document.querySelector('textarea#input');
 var btnSend = document.querySelector('button#send');
 
+
+var videoBindwidthSelect = document.getElementById('videoBindwidth');
 var socket;
 var room;
 var localStream;
@@ -193,7 +195,7 @@ async function InitPeerconnect() {
     };
     peerconnetion.oniceconnectionstatechange = (ev)=>{
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + JSON.stringify(ev.type) + '\r';
+        outputArea.value = outputArea.value + JSON.stringify(peerconnetion.iceConnectionState) + '\r';
     };
     //添加本地媒体流
     for (const track of localStream.getTracks()) {
@@ -238,6 +240,7 @@ async function InitPeerconnect() {
         //发送出去
         const setLocalDescriptionErr = await peerconnetion.setLocalDescription(answerSDP);
         addcandidateFUN();
+        videoBindwidthSelect.disabled = false;
 
     }
 
@@ -260,6 +263,7 @@ function peerCloseFun ()  {
     recvSdp = null;
     inputArea.value = '';
     peerconnetion = null;
+    videoBindwidthSelect.disabled = true;
 }
 // videoSource.onchange = start;
 // audioSource.onchange = start;
@@ -414,6 +418,7 @@ btnConnect.onclick = () => {
                 peerconnetion.setRemoteDescription(data.sdp);
                 isSetRemote = true;
                 addcandidateFUN();
+                videoBindwidthSelect.disabled = false;
             }
                 break;
             case 2: {// candidate
@@ -470,3 +475,42 @@ inputArea.onkeypress = (event) => {
         event.preventDefault();//阻止默认行为
     }
 }
+videoBindwidthSelect.onchange = () =>{
+    //  先使标签不可见
+    videoBindwidthSelect.disabled = true;
+    // 获取选择的值
+    const bw = videoBindwidthSelect.options[videoBindwidthSelect.selectedIndex].value;
+    console.log('用户选择的大小是：'+bw);
+    var vSender = null;
+    var aSender = null;
+    // 从peer connection中获取senders 然后遍历查找到视频的sender
+    peerconnetion.getSenders().forEach(sender => {
+             if (sender && sender.track.kind === 'video') {
+                 vSender = sender;
+             }
+             if (sender && sender.track.kind === 'audio') {
+                aSender = sender;
+            }
+    });
+    // 从视频sender中获取parameters
+    var paramaters = vSender.getParameters();
+    var aParamaters = aSender.getParameters();
+    if (!paramaters.encodings) {
+        return;
+    }
+    if (!aParamaters.encodings) {
+        // return;
+    }
+    // 如果有联播这里需要使用循环去设置每一个的值
+    //  这里只有一个所以直接获取第一个进行设置
+    paramaters.encodings[0].maxBitrate = bw * 1000;
+    // 将参数应用到sender中
+    vSender.setParameters(paramaters).then(()=>{
+        console.log('设置限制最大码率成功');
+        videoBindwidthSelect.disabled = false;
+    }).catch((e) => {
+        videoBindwidthSelect.disabled = false;
+        console.log(e);
+    });
+
+};
