@@ -48,10 +48,23 @@ var btnSend = document.querySelector('button#send');
 
 
 var videoBindwidthSelect = document.getElementById('videoBindwidth');
-var birateCanvas  = document.getElementById('birateCanvas');
-var packetsCanvas = document.getElementById('packetsCanvas');
+// var birateCanvas  = document.getElementById('birateCanvas');
+// var packetsCanvas = document.getElementById('packetsCanvas');
 
-
+const config = {
+    bundlePolicy: 'balanced',
+    // certificates?: RTCCertificate[];
+    // iceCandidatePoolSize?: number;
+    iceTransportPolicy: "all",//  public relay
+    rtcpMuxPolicy: 'negotiate',
+    iceServers: [
+        {
+            urls: "turn:www.lymggylove.top:3478",
+            username: "lym",
+            credential: "123456"
+        }
+    ]
+};
 var socket;
 var room;
 var localStream;
@@ -95,9 +108,9 @@ function startWebCam() {
                     deviceId: videoDeviceIds ? videoDeviceIds : undefined
                 },
                 video: {
-                    width: 320,
-                    height: 240,
-                    frameRate: { ideal: 10, max: 15 },
+                    width: 640,
+                    height: 480,
+                    frameRate: { ideal: 10, max: 30 },
                     deviceId: audioDeviceIds ? audioDeviceIds : undefined
                 },
 
@@ -161,20 +174,7 @@ async function InitPeerconnect() {
     await startWebCam();
     await getUserMedia();
     console.log('结束初始化摄像头。。。。');
-    const config = {
-        bundlePolicy: 'balanced',
-        // certificates?: RTCCertificate[];
-        // iceCandidatePoolSize?: number;
-        iceTransportPolicy: "all",//  public relay
-        rtcpMuxPolicy: 'negotiate',
-        iceServers: [
-            {
-                urls: "turn:www.lymggylove.top:3478",
-                username: "lym",
-                credential: "123456"
-            }
-        ]
-    };
+
     peerconnetion = new RTCPeerConnection(config);
     peerconnetion.ontrack = (ev) => {
         if (ev.streams && ev.streams[0]) {
