@@ -48,6 +48,10 @@ var btnSend = document.querySelector('button#send');
 
 
 var videoBindwidthSelect = document.getElementById('videoBindwidth');
+var birateCanvas  = document.getElementById('birateCanvas');
+var packetsCanvas = document.getElementById('packetsCanvas');
+
+
 var socket;
 var room;
 var localStream;
@@ -196,6 +200,9 @@ async function InitPeerconnect() {
     peerconnetion.oniceconnectionstatechange = (ev)=>{
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         outputArea.value = outputArea.value + JSON.stringify(peerconnetion.iceConnectionState) + '\r';
+        if (peerconnetion.iceConnectionState === 'connected') {
+            startGraph();
+        }
     };
     //添加本地媒体流
     for (const track of localStream.getTracks()) {
@@ -245,6 +252,14 @@ async function InitPeerconnect() {
     }
 
 }
+var bitrateGraph;
+var bitrateSeries;
+
+var packetGraph;
+var packetSeries;
+
+var lastResult;
+var graphInterval = null;
 //     结束webrtc 
 function peerCloseFun ()  {
     isStartRecored = false;
@@ -264,6 +279,60 @@ function peerCloseFun ()  {
     inputArea.value = '';
     peerconnetion = null;
     videoBindwidthSelect.disabled = true;
+    if (graphInterval) {
+        clearInterval(graphInterval);
+
+    }
+}
+
+async function startGraph(){
+    var vSender = null;
+    var aSender = null;
+    bitrateSeries = new TimelineDataSeries();
+	bitrateGraph = new TimelineGraphView('bitrateGraph', 'birateCanvas');
+	bitrateGraph.updateEndDate();
+
+	packetSeries = new TimelineDataSeries();
+	packetGraph = new TimelineGraphView('packetGraph', 'packetsCanvas');
+	packetGraph.updateEndDate();
+    // 从peer connection中获取senders 然后遍历查找到视频的sender
+    peerconnetion.getSenders().forEach(sender => {
+             if (sender && sender.track.kind === 'video') {
+                 vSender = sender;
+             }
+             if (sender && sender.track.kind === 'audio') {
+                aSender = sender;
+            }
+    });
+    // RTCStatsReport
+    graphInterval = setInterval(async () => {
+        const statsReport = await vSender.getStats();
+        statsReport.forEach((value, key, parent) => {
+            if (value.type === 'outbound-rtp') {
+                const now = value.timestamp;
+                let bytes = value.bytesSent;
+                let packets = value.packetsSent;
+                if (lastResult && lastResult.has(value.id)) {
+                    // calculate bitrate
+                    const bitrate = 8 * (bytes - lastResult.get(value.id).bytesSent) /
+                        (now - lastResult.get(value.id).timestamp);
+                    const packet = packets - lastResult.get(value.id).packetsSent;
+
+                    // append to chart
+                    bitrateSeries.addPoint(now, bitrate);
+                    bitrateGraph.setDataSeries([bitrateSeries]);
+                    bitrateGraph.updateEndDate();
+
+                    // calculate number of packets and append to chart
+                    packetSeries.addPoint(now, packet);
+                    packetGraph.setDataSeries([packetSeries]);
+                    packetGraph.updateEndDate();
+                }
+            }
+        });
+        lastResult = statsReport;
+    }, 1000);
+    
 }
 // videoSource.onchange = start;
 // audioSource.onchange = start;

@@ -101,18 +101,19 @@
             </td>
 
         </tr>
-        <!-- <tr>
-            <td>
+        <tr>
+            <td id="bitrateGraph">
+                <!-- <div class="graph-container" id="bitrateGraph"></div> -->
                 <div>比特率</div>
                 <canvas id="birateCanvas"></canvas>
             </td>
-            <td>
+            <td id="packetGraph">
                 <div>每秒发送的包数</div>
                 <canvas id="packetsCanvas"></canvas>
             </td>
             </td>
 
-        </tr> -->
+        </tr>
         <tr>
             <td>
                 <button id="record_Btn" style="width: auto; height: fit-content;">Start Record</button>
@@ -173,6 +174,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
     <script type="test/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
     <script type="text/javascript" src="./js/client.js"></script>
+    <script type="text/javascript" src="./js/graph.js"></script>
 </body>
 
 </html>
