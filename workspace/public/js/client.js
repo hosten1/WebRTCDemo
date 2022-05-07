@@ -75,6 +75,8 @@ var isStartRecored = false;
 var isSetRemote = false;
 // 是不是主叫
 let peerconnetion = null;
+let sendDC = null;
+let recvDC = null;
 var isOffer = true;
 var recvSdp = {
     sdp: null,
@@ -86,7 +88,7 @@ var selfid = '';
 function randomString(length) {
     var str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     var result = '';
-    for (var i = length; i > 0; --i) 
+    for (var i = length; i > 0; --i)
         result += str[Math.floor(Math.random() * str.length)];
     return result;
 }
@@ -176,6 +178,28 @@ async function InitPeerconnect() {
     console.log('结束初始化摄像头。。。。');
 
     peerconnetion = new RTCPeerConnection(config);
+    sendDC = peerconnetion.createDataChannel('my channal');
+    sendDC.onopen = function () {
+        console.log("sendDC datachannel open");
+    };
+  
+    sendDC.onclose = function () {
+        console.log("sendDC datachannel close");
+    };
+    peerconnetion.ondatachannel = (ev)=>{
+        recvDC = ev.channel;
+        recvDC.onmessage = function (event) {
+            console.log(" recvDC received: " + event.data);
+        };
+    
+        recvDC.onopen = function () {
+            console.log("recvDC datachannel open");
+        };
+      
+        recvDC.onclose = function () {
+            console.log("recvDC datachannel close");
+        };
+    };
     peerconnetion.ontrack = (ev) => {
         if (ev.streams && ev.streams[0]) {
             remoteVideoPlayer.srcObject = ev.streams[0];
@@ -197,11 +221,15 @@ async function InitPeerconnect() {
             });
         }
     };
-    peerconnetion.oniceconnectionstatechange = (ev)=>{
+    peerconnetion.oniceconnectionstatechange = (ev) => {
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         outputArea.value = outputArea.value + JSON.stringify(peerconnetion.iceConnectionState) + '\r';
         if (peerconnetion.iceConnectionState === 'connected') {
             startGraph();
+            setTimeout(() => {
+                // RTCDataChannel
+                sendDC.send('你好 我是 ' + selfid);
+            }, 5000);
         }
     };
     //添加本地媒体流
@@ -231,6 +259,7 @@ async function InitPeerconnect() {
             offerToReceiveVideo: true,
         };
         // RTCSessionDescriptionInit init = 
+        console.log('Answer setRemoteDescription' + JSON.stringify(recvSdp));
         const errsetRemoteDescription = await peerconnetion.setRemoteDescription(recvSdp);
         if (errsetRemoteDescription) {
             console.error('answer setRemoteDescription err :' + JSON.stringify(recvSdp));
@@ -264,18 +293,22 @@ var bitrateRecvSeries;
 var lastResult;
 var graphInterval = null;
 //     结束webrtc 
-function peerCloseFun ()  {
+function peerCloseFun() {
     isStartRecored = false;
     for (const track of localStream.getTracks()) {
         // peerconnetion.removeTrack(track);
         track.stop();
     }
+    sendDC.close();
+    recvDC.close();
+    sendDC = null;
+    recvDC = null;
     peerconnetion.close();
     localStream = null;
     cacheCandidateMsg = [];
     videoPlayer.srcObject = null;
     remoteVideoPlayer.srcObject = null;
-    
+
     isSetRemote = false;
     isOffer = true;
     recvSdp = null;
@@ -288,28 +321,28 @@ function peerCloseFun ()  {
     }
 }
 
-async function startGraph(){
+async function startGraph() {
     var vSender = null;
     var aSender = null;
     bitrateSeries = new TimelineDataSeries();
-	bitrateGraph = new TimelineGraphView('bitrateGraph', 'birateCanvas');
-	bitrateGraph.updateEndDate();
+    bitrateGraph = new TimelineGraphView('bitrateGraph', 'birateCanvas');
+    bitrateGraph.updateEndDate();
 
-	packetSeries = new TimelineDataSeries();
-	packetGraph = new TimelineGraphView('packetGraph', 'packetsCanvas');
-	packetGraph.updateEndDate();
+    packetSeries = new TimelineDataSeries();
+    packetGraph = new TimelineGraphView('packetGraph', 'packetsCanvas');
+    packetGraph.updateEndDate();
 
     bitrateRecvSeries = new TimelineDataSeries();
-	bitrateRecvGraph = new TimelineGraphView('bitrateRecvtGraph', 'bitrateRecvCanvas');
-	bitrateRecvGraph.updateEndDate();
+    bitrateRecvGraph = new TimelineGraphView('bitrateRecvtGraph', 'bitrateRecvCanvas');
+    bitrateRecvGraph.updateEndDate();
     // 从peer connection中获取senders 然后遍历查找到视频的sender
     peerconnetion.getSenders().forEach(sender => {
-             if (sender && sender.track.kind === 'video') {
-                 vSender = sender;
-             }
-             if (sender && sender.track.kind === 'audio') {
-                aSender = sender;
-            }
+        if (sender && sender.track.kind === 'video') {
+            vSender = sender;
+        }
+        if (sender && sender.track.kind === 'audio') {
+            aSender = sender;
+        }
     });
     // RTCStatsReport
     graphInterval = setInterval(async () => {
@@ -335,7 +368,7 @@ async function startGraph(){
                     packetGraph.setDataSeries([packetSeries]);
                     packetGraph.updateEndDate();
                 }
-            }else if (value.type === "transport") {
+            } else if (value.type === "transport") {
                 const now = value.timestamp;
                 let bytes = value.bytesSent;
                 let bytesRecv = value.bytesReceived;
@@ -343,16 +376,16 @@ async function startGraph(){
                 if (lastResult && lastResult.has(value.id)) {
                     const bitrateRecv = 8 * (bytesRecv - lastResult.get(value.id).bytesReceived) /
                         (now - lastResult.get(value.id).timestamp);
-                     // append to chart
-                     bitrateRecvSeries.addPoint(now, bitrateRecv);
-                     bitrateRecvGraph.setDataSeries([bitrateRecvSeries]);
-                     bitrateRecvGraph.updateEndDate();
+                    // append to chart
+                    bitrateRecvSeries.addPoint(now, bitrateRecv);
+                    bitrateRecvGraph.setDataSeries([bitrateRecvSeries]);
+                    bitrateRecvGraph.updateEndDate();
                 }
             }
         });
         lastResult = statsReport;
     }, 1000);
-    
+
 }
 // videoSource.onchange = start;
 // audioSource.onchange = start;
@@ -400,10 +433,11 @@ async function startRecord() {
 
 
 }
-function addcandidateFUN(){
-    cacheCandidateMsg.forEach((item, index, arr)=> {
-        peerconnetion.addIceCandidate(item) }); // undefined
-        cacheCandidateMsg = [];
+function addcandidateFUN() {
+    cacheCandidateMsg.forEach((item, index, arr) => {
+        peerconnetion.addIceCandidate(item)
+    }); // undefined
+    cacheCandidateMsg = [];
 }
 async function stopRecord() {
 
@@ -464,7 +498,7 @@ btnConnect.onclick = () => {
         btnSend.disabled = false;
         recordBtn.disabled = false;
         snapshotBtn.disabled = false;
-       
+
     });
     socket.on('otherJoined', (room, id) => {
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
@@ -473,9 +507,9 @@ btnConnect.onclick = () => {
         btnLeave.disabled = false;
         inputArea.disabled = false;
         btnSend.disabled = false;
-         // 初始化为webrtc 相关 这里只要对方一加入就 启动webrtc
-         isOffer = true;
-         InitPeerconnect();
+        // 初始化为webrtc 相关 这里只要对方一加入就 启动webrtc
+        isOffer = true;
+        InitPeerconnect();
     });
 
     socket.on('leaved', (room, id) => {
@@ -487,7 +521,7 @@ btnConnect.onclick = () => {
         snapshotBtn.disabled = true;
         peerCloseFun();
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + 'leaved'+ id + '\r';
+        outputArea.value = outputArea.value + 'leaved' + id + '\r';
         socket.disconnect();
     });
 
@@ -504,6 +538,7 @@ btnConnect.onclick = () => {
             }
                 break;
             case 1: {// answer
+                console.log('offer setRemoteDescription' + JSON.stringify(data.sdp));
                 peerconnetion.setRemoteDescription(data.sdp);
                 isSetRemote = true;
                 addcandidateFUN();
@@ -511,15 +546,16 @@ btnConnect.onclick = () => {
             }
                 break;
             case 2: {// candidate
-                if (isSetRemote ==  true) {
-                    outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-                    
+                if (isSetRemote === true) {
+                    peerconnetion.addIceCandidate(data.candidate);
+                    addcandidateFUN();
                 } else {
                     cacheCandidateMsg.push(data.candidate);
-                    addcandidateFUN();
+                   
                 }
+                outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
+
                 outputArea.value = outputArea.value + JSON.stringify(data.candidate) + '\r';
-                peerconnetion.addIceCandidate(data.candidate);
             }
                 break;
 
@@ -564,22 +600,22 @@ inputArea.onkeypress = (event) => {
         event.preventDefault();//阻止默认行为
     }
 }
-videoBindwidthSelect.onchange = () =>{
+videoBindwidthSelect.onchange = () => {
     //  先使标签不可见
     videoBindwidthSelect.disabled = true;
     // 获取选择的值
     const bw = videoBindwidthSelect.options[videoBindwidthSelect.selectedIndex].value;
-    console.log('用户选择的大小是：'+bw);
+    console.log('用户选择的大小是：' + bw);
     var vSender = null;
     var aSender = null;
     // 从peer connection中获取senders 然后遍历查找到视频的sender
     peerconnetion.getSenders().forEach(sender => {
-             if (sender && sender.track.kind === 'video') {
-                 vSender = sender;
-             }
-             if (sender && sender.track.kind === 'audio') {
-                aSender = sender;
-            }
+        if (sender && sender.track.kind === 'video') {
+            vSender = sender;
+        }
+        if (sender && sender.track.kind === 'audio') {
+            aSender = sender;
+        }
     });
     // 从视频sender中获取parameters
     var paramaters = vSender.getParameters();
@@ -594,7 +630,7 @@ videoBindwidthSelect.onchange = () =>{
     //  这里只有一个所以直接获取第一个进行设置
     paramaters.encodings[0].maxBitrate = bw * 1000;
     // 将参数应用到sender中
-    vSender.setParameters(paramaters).then(()=>{
+    vSender.setParameters(paramaters).then(() => {
         console.log('设置限制最大码率成功');
         videoBindwidthSelect.disabled = false;
     }).catch((e) => {
