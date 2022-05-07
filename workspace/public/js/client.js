@@ -258,6 +258,9 @@ var bitrateSeries;
 var packetGraph;
 var packetSeries;
 
+var bitrateRecvGraph;
+var bitrateRecvSeries;
+
 var lastResult;
 var graphInterval = null;
 //     结束webrtc 
@@ -295,6 +298,10 @@ async function startGraph(){
 	packetSeries = new TimelineDataSeries();
 	packetGraph = new TimelineGraphView('packetGraph', 'packetsCanvas');
 	packetGraph.updateEndDate();
+
+    bitrateRecvSeries = new TimelineDataSeries();
+	bitrateRecvGraph = new TimelineGraphView('bitrateRecvtGraph', 'bitrateRecvCanvas');
+	bitrateRecvGraph.updateEndDate();
     // 从peer connection中获取senders 然后遍历查找到视频的sender
     peerconnetion.getSenders().forEach(sender => {
              if (sender && sender.track.kind === 'video') {
@@ -327,6 +334,19 @@ async function startGraph(){
                     packetSeries.addPoint(now, packet);
                     packetGraph.setDataSeries([packetSeries]);
                     packetGraph.updateEndDate();
+                }
+            }else if (value.type === "transport") {
+                const now = value.timestamp;
+                let bytes = value.bytesSent;
+                let bytesRecv = value.bytesReceived;
+                let packets = value.packetsSent;
+                if (lastResult && lastResult.has(value.id)) {
+                    const bitrateRecv = 8 * (bytesRecv - lastResult.get(value.id).bytesReceived) /
+                        (now - lastResult.get(value.id).timestamp);
+                     // append to chart
+                     bitrateRecvSeries.addPoint(now, bitrateRecv);
+                     bitrateRecvGraph.setDataSeries([bitrateRecvSeries]);
+                     bitrateRecvGraph.updateEndDate();
                 }
             }
         });
