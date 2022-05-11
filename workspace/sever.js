@@ -45,9 +45,13 @@ io.on('connection', function (socket) {
         if (myRoom) {
             users =  Object.keys(myRoom.sockets).length;
         }
-       socket.emit('joined',room,socket.id);
+        var data = {
+            room,
+            id:socket.id
+        }
+       socket.emit('joined',data);
        if (users > 1){
-          socket.to(room).emit('otherJoined',room,socket.id);
+          socket.to(room).emit('otherJoined',data);
        }
     // 给除了自己之外的所有人发
     //    socket.to(room).emit('joined',room,socket.id);
@@ -55,9 +59,14 @@ io.on('connection', function (socket) {
         // io.in(room).emit('joined',room,socket.id);
         // socket.broadcast.emit('joined',room,socket.id);
     });
-    socket.on('message', (room,data) => {
+    socket.on('message', (room,data,cb) => {
         console.log("====>message" + JSON.stringify(data));
-        socket.to(room).emit('message', room, socket.id, data)//房间除自己内所有人
+        data.room = room;
+        data.id = socket.id
+        socket.to(room).emit('message', data)//房间除自己内所有人
+        if (cb) {
+            cb({code:0});
+        }
     });
     socket.on('leave', (room)=> {
 		var myRoom = io.sockets.adapter.rooms[room];
@@ -65,8 +74,12 @@ io.on('connection', function (socket) {
 		//users - 1;
 
 		console.log('the number of user in room is: ' + (users-1));
-        socket.emit('leaved', room, socket.id);	
-        socket.to(room).emit('leaved', room, socket.id);//除自己之外
+        var data = {
+            room,
+            id:socket.id
+        }
+        socket.emit('leaved',data);	
+        socket.to(room).emit('leaved', data);//除自己之外
 		socket.leave(room);
 	 	//socket.to(room).emit('joined', room, socket.id);//除自己之外
 		//io.in(room).emit('joined', room, socket.id)//房间内所有人

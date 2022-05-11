@@ -52,11 +52,11 @@ var videoBindwidthSelect = document.getElementById('videoBindwidth');
 // var packetsCanvas = document.getElementById('packetsCanvas');
 
 const config = {
-    bundlePolicy: 'balanced',
+    // bundlePolicy: 'balanced',
     // certificates?: RTCCertificate[];
     // iceCandidatePoolSize?: number;
-    iceTransportPolicy: "all",//  public relay
-    rtcpMuxPolicy: 'negotiate',
+    // iceTransportPolicy: "all",//  public relay
+    // rtcpMuxPolicy: 'negotiate',
     iceServers: [
         {
             urls: "turn:www.lymggylove.top:3478",
@@ -178,27 +178,34 @@ async function InitPeerconnect() {
     console.log('结束初始化摄像头。。。。');
 
     peerconnetion = new RTCPeerConnection(config);
-    sendDC = peerconnetion.createDataChannel('my channal');
-    sendDC.onopen = function () {
-        console.log("sendDC datachannel open");
-    };
+    // const opt = {
+    //     negotiated: true,
+    //     id : 0
+    // };
+    // sendDC = peerconnetion.createDataChannel('my channal',opt);
+    // sendDC.onopen = function () {
+    //     console.log("sendDC datachannel open");
+    // };
   
-    sendDC.onclose = function () {
-        console.log("sendDC datachannel close");
-    };
+    // sendDC.onclose = function () {
+    //     console.log("sendDC datachannel close");
+    // };
+    // sendDC.onmessage = function (event) {
+    //         console.log(" recvDC received: " + event.data);
+    // };
     peerconnetion.ondatachannel = (ev)=>{
-        recvDC = ev.channel;
-        recvDC.onmessage = function (event) {
-            console.log(" recvDC received: " + event.data);
-        };
+        // recvDC = ev.channel;
+        // recvDC.onmessage = function (event) {
+        //     console.log(" recvDC received: " + event.data);
+        // };
     
-        recvDC.onopen = function () {
-            console.log("recvDC datachannel open");
-        };
+        // recvDC.onopen = function () {
+        //     console.log("recvDC datachannel open");
+        // };
       
-        recvDC.onclose = function () {
-            console.log("recvDC datachannel close");
-        };
+        // recvDC.onclose = function () {
+        //     console.log("recvDC datachannel close");
+        // };
     };
     peerconnetion.ontrack = (ev) => {
         if (ev.streams && ev.streams[0]) {
@@ -240,6 +247,7 @@ async function InitPeerconnect() {
         const offerOption = {
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
+            'googNumSimulcastLayers':2,
         };
         const offerSdp = await peerconnetion.createOffer(offerOption);
         if (socket) {
@@ -488,7 +496,8 @@ btnConnect.onclick = () => {
     socket = io.connect();
 
     //recieve message
-    socket.on('joined', (room, id) => {
+    socket.on('joined', (data) => {
+        const {room, id} = data;
         if (selfid.length < 1) {
             selfid = id
         }
@@ -500,7 +509,8 @@ btnConnect.onclick = () => {
         snapshotBtn.disabled = false;
 
     });
-    socket.on('otherJoined', (room, id) => {
+    socket.on('otherJoined', (data) => {
+        const {room, id} = data;
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         outputArea.value = outputArea.value + 'otherJoined' + id + '\r';
         btnConnect.disabled = true;
@@ -512,7 +522,8 @@ btnConnect.onclick = () => {
         InitPeerconnect();
     });
 
-    socket.on('leaved', (room, id) => {
+    socket.on('leaved', (data) => {
+        const {room, id} = data;
         btnConnect.disabled = false;
         btnLeave.disabled = true;
         inputArea.disabled = true;
@@ -525,7 +536,8 @@ btnConnect.onclick = () => {
         socket.disconnect();
     });
 
-    socket.on('message', (room, id, data) => {
+    socket.on('message', (data) => {
+        const id = data.id;
         if (id === selfid) {
             return;
         }
