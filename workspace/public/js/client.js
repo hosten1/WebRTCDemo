@@ -178,21 +178,22 @@ async function InitPeerconnect() {
     console.log('结束初始化摄像头。。。。');
 
     peerconnetion = new RTCPeerConnection(config);
-    // const opt = {
-    //     negotiated: true,
-    //     id : 0
-    // };
-    // sendDC = peerconnetion.createDataChannel('my channal',opt);
-    // sendDC.onopen = function () {
-    //     console.log("sendDC datachannel open");
-    // };
+    const opt = {
+        negotiated: true,
+        id : 0
+    };
+    
+    sendDC = peerconnetion.createDataChannel('my channal',opt);
+    sendDC.onopen = function () {
+        console.log("sendDC datachannel open");
+    };
   
-    // sendDC.onclose = function () {
-    //     console.log("sendDC datachannel close");
-    // };
-    // sendDC.onmessage = function (event) {
-    //         console.log(" recvDC received: " + event.data);
-    // };
+    sendDC.onclose = function () {
+        console.log("sendDC datachannel close");
+    };
+    sendDC.onmessage = function (event) {
+            console.log(" recvDC received: " + event.data);
+    };
     peerconnetion.ondatachannel = (ev)=>{
         // recvDC = ev.channel;
         // recvDC.onmessage = function (event) {
@@ -225,6 +226,8 @@ async function InitPeerconnect() {
             await socket.emit('message', room, {
                 type: 2,
                 candidate: ev.candidate
+            },(data)=>{
+                console.log('发送成功了 '+JSON.stringify(data));
             });
         }
     };

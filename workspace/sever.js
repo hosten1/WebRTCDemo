@@ -60,7 +60,7 @@ io.on('connection', function (socket) {
         // socket.broadcast.emit('joined',room,socket.id);
     });
     socket.on('message', (room,data,cb) => {
-        console.log("====>message" + JSON.stringify(data));
+        // console.log("====>message" + JSON.stringify(data));
         data.room = room;
         data.id = socket.id
         socket.to(room).emit('message', data)//房间除自己内所有人
@@ -73,7 +73,7 @@ io.on('connection', function (socket) {
 		var users = Object.keys(myRoom.sockets).length;
 		//users - 1;
 
-		console.log('the number of user in room is: ' + (users-1));
+		console.log('leave the number of user in room is: ' + (users-1));
         var data = {
             room,
             id:socket.id
