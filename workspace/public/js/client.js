@@ -223,12 +223,12 @@ async function InitPeerconnect() {
     peerconnetion.onicecandidate = async (ev) => {
         console.log('=======>' + JSON.stringify(ev.candidate));
         if (socket) {
-            await socket.emit('message', room, {
+            await socket.emit('message', [room,selfid, {
                 type: 2,
                 candidate: ev.candidate
             },(data)=>{
                 console.log('发送成功了 '+JSON.stringify(data));
-            });
+            }]);
         }
     };
     peerconnetion.oniceconnectionstatechange = (ev) => {
@@ -254,10 +254,10 @@ async function InitPeerconnect() {
         };
         const offerSdp = await peerconnetion.createOffer(offerOption);
         if (socket) {
-            await socket.emit('message', room, {
+            await socket.emit('message', [room,selfid, {
                 type: 0,
                 sdp: offerSdp
-            });
+            }]);
         }
         const errLocalDescription = await peerconnetion.setLocalDescription(offerSdp);
         if (errLocalDescription) {
@@ -279,10 +279,10 @@ async function InitPeerconnect() {
         isSetRemote = true;
         const answerSDP = await peerconnetion.createAnswer(answerOption);
         if (socket) {
-            await socket.emit('message', room, {
+            await socket.emit('message', [room,selfid, {
                 type: 1,
                 sdp: answerSDP
-            });
+            }]);
         }
         //发送出去
         const setLocalDescriptionErr = await peerconnetion.setLocalDescription(answerSDP);
@@ -501,8 +501,8 @@ btnConnect.onclick = () => {
     //recieve message
     socket.on('joined', (data) => {
         const {room, id} = data;
-        if (selfid.length < 1) {
-            selfid = id
+        if (.length < 1) {
+             = id
         }
         btnConnect.disabled = true;
         btnLeave.disabled = false;
@@ -602,7 +602,7 @@ btnSend.onclick = () => {
 
 btnLeave.onclick = () => {
     room = inputRoom.value;
-    socket.emit('leave', room);
+    socket.emit('leave', [room,selfid]);
 }
 
 inputArea.onkeypress = (event) => {
@@ -610,7 +610,7 @@ inputArea.onkeypress = (event) => {
     if (event.keyCode == 13) { //回车发送消息
         var data = inputArea.value;
         data = userName.value + ':' + data;
-        socket.emit('message', room, data);
+        socket.emit('message', [room,selfid, data]);
         inputArea.value = '';
         event.preventDefault();//阻止默认行为
     }
