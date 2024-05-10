@@ -3,7 +3,7 @@
 ## 加入房间
 发送如下信令：
 ```js
-socket.emit('join', room);
+socket.emit('join', [roomId]);
 ```
 服务会返回状态所以这里可以使用emitwithAck
 ##  推送消息
@@ -69,33 +69,33 @@ socket.on('message', (data) => {
 # 发送消息格式
 ## 发送ice信息如下：
 ```js
-ocket.emit('message', room,id, {
+ocket.emit('message', [room,selfid, {
                 type: 2,
                 candidate: ev.candidate
             },(data)=>{
                 console.log('发送成功了 '+JSON.stringify(data));
-            });
+            }]);
 ```
 ## 发送offer信息如下：
 ```js
-socket.emit('message', room,id, {
+socket.emit('message', [room,selfid, {
                 type: 0,
                 sdp: offerSdp
-            });
+            }]);
 ```
 ## 发送answer信息如下：
 ```js
-socket.emit('message', room,id, {
+socket.emit('message', [room,selfid, {
                 type: 1,
                 sdp: answerSDP
-            });
+            }]);
 ```
 ## 发送level信息如下：
 ```js
-ocket.emit('leaved', room,id, {
+ocket.emit('leaved', [room,id, {
                 type: 2,
                 candidate: ev.candidate
             },(data)=>{
                 console.log('发送成功了 '+JSON.stringify(data));
-            });
+            }]);
 ```
