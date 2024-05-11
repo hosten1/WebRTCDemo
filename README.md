@@ -3,7 +3,7 @@
 ## 加入房间
 发送如下信令：
 ```js
-socket.emit('join', [roomId]);
+socket.emit('join', roomId);
 ```
 服务会返回状态所以这里可以使用emitwithAck
 ##  推送消息
@@ -11,7 +11,7 @@ socket.emit('join', [roomId]);
  客户端监听如下方法：
  ```js
 socket.on('joined', (data) => {
-        const {room, id} = data;
+        const {roomId, id} = data;
        
 
  });
@@ -21,7 +21,7 @@ socket.on('joined', (data) => {
 客户端监听如下方法：
  ```js
 socket.on('otherJoined', (data) => {
-        const {room, id} = data;
+        const {roomId, id} = data;
        
 
  });
@@ -30,7 +30,7 @@ socket.on('otherJoined', (data) => {
 客户端监听如下方法：
  ```js
 socket.on('leaved', (data) => {
-        const {room, id} = data;
+        const {roomId, id} = data;
       
  });
 
@@ -69,33 +69,39 @@ socket.on('message', (data) => {
 # 发送消息格式
 ## 发送ice信息如下：
 ```js
-ocket.emit('message', [room,selfid, {
+ocket.emit('message',  {
+                roomId:room,
+                id: id,
                 type: 2,
                 candidate: ev.candidate
             },(data)=>{
                 console.log('发送成功了 '+JSON.stringify(data));
-            }]);
+            });
 ```
 ## 发送offer信息如下：
 ```js
-socket.emit('message', [room,selfid, {
+socket.emit('message',  {
+                roomId:room,
+                id: id,
                 type: 0,
                 sdp: offerSdp
-            }]);
+            });
 ```
 ## 发送answer信息如下：
 ```js
-socket.emit('message', [room,selfid, {
+socket.emit('message', {
+                roomId:room,
+                id: id,
                 type: 1,
                 sdp: answerSDP
-            }]);
+            });
 ```
 ## 发送level信息如下：
 ```js
-ocket.emit('leaved', [room,id, {
-                type: 2,
-                candidate: ev.candidate
+ocket.emit('leaved',  {
+                roomId:room,
+                id:selfid
             },(data)=>{
                 console.log('发送成功了 '+JSON.stringify(data));
-            }]);
+            });
 ```

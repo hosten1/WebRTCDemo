@@ -36,7 +36,7 @@ const io = require('socket.io')(httpsServer);
 io.on('connection', function (socket) {
     console.log('===>connection request query= ' + JSON.stringify(socket.handshake.query) );
     socket.on('join', (room) => {
-        console.log("====>join" + JSON.stringify(room));
+        console.log("====>join data:" + JSON.stringify(room));
         //加入io的到房间里
         socket.join(room);
         // 获取socket的房间
@@ -46,7 +46,7 @@ io.on('connection', function (socket) {
             users =  Object.keys(myRoom.sockets).length;
         }
         var data = {
-            room,
+            roomId:room,
             id:socket.id
         }
        socket.emit('joined',data);
@@ -59,27 +59,42 @@ io.on('connection', function (socket) {
         // io.in(room).emit('joined',room,socket.id);
         // socket.broadcast.emit('joined',room,socket.id);
     });
-    socket.on('message', (room,data,cb) => {
-        // console.log("====>message" + JSON.stringify(data));
-        data.room = room;
-        data.id = socket.id
-        socket.to(room).emit('message', data)//房间除自己内所有人
-        if (cb) {
-            cb({code:0});
-        }
+    socket.on('message', (data,cb) => {
+
+        console.log("====>message data:"+JSON.stringify(data));
+          // 确保 data 是一个对象
+	    if (typeof data === 'object') {
+	        data.roomId = data.roomId;
+	        data.id = socket.id;
+	        
+	        // 使用 socket.to(room).emit() 发送消息到指定房间内的所有人
+	        socket.to(data.roomId).emit('message', data);
+	
+	        if (cb) {
+	            cb({ code: 0 });
+	        }
+	    } else {
+	        console.log("Invalid data type for 'data'.");
+	    }
     });
     socket.on('leave', (room)=> {
+    	console.log('===>leave request room= ' + JSON.stringify(room) );
 		var myRoom = io.sockets.adapter.rooms[room];
-		var users = Object.keys(myRoom.sockets).length;
-		//users - 1;
-
-		console.log('leave the number of user in room is: ' + (users-1));
+		if(myRoom)
+		{
+			var users = Object.keys(myRoom.sockets).length;
+			//users - 1;
+	
+			console.log('leave the number of user in room is: ' + (users-1));
+		}
+		
         var data = {
             room,
             id:socket.id
         }
         socket.emit('leaved',data);	
         socket.to(room).emit('leaved', data);//除自己之外
+           
 		socket.leave(room);
 	 	//socket.to(room).emit('joined', room, socket.id);//除自己之外
 		//io.in(room).emit('joined', room, socket.id)//房间内所有人

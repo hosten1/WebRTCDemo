@@ -59,7 +59,7 @@ const config = {
     // rtcpMuxPolicy: 'negotiate',
     iceServers: [
         {
-            urls: "turn:www.lymggylove.top:3478",
+            urls: "turn:39.97.110.12:3478",
             username: "lym",
             credential: "123456"
         }
@@ -221,14 +221,19 @@ async function InitPeerconnect() {
         // }
     };
     peerconnetion.onicecandidate = async (ev) => {
-        console.log('=======>' + JSON.stringify(ev.candidate));
+        console.log('=======> send onicecandidate:' + JSON.stringify(ev.candidate));
         if (socket) {
-            await socket.emit('message', [room,selfid, {
-                type: 2,
-                candidate: ev.candidate
-            },(data)=>{
-                console.log('发送成功了 '+JSON.stringify(data));
-            }]);
+        	if(ev.candidate){
+	        	await socket.emit('message',  {
+	            	 roomId:room,
+	            	 id:selfid,
+	                type: 2,
+	                candidate: ev.candidate
+	            },(data)=>{
+	                console.log('发送成功了 '+JSON.stringify(data));
+	            });
+        	}
+            
         }
     };
     peerconnetion.oniceconnectionstatechange = (ev) => {
@@ -254,10 +259,14 @@ async function InitPeerconnect() {
         };
         const offerSdp = await peerconnetion.createOffer(offerOption);
         if (socket) {
-            await socket.emit('message', [room,selfid, {
+        	
+            await socket.emit('message', {
+            	 roomId:room,
+            	 id:selfid,
                 type: 0,
                 sdp: offerSdp
-            }]);
+            });
+            console.log('=======> send offerSdp:' + offerSdp);
         }
         const errLocalDescription = await peerconnetion.setLocalDescription(offerSdp);
         if (errLocalDescription) {
@@ -279,10 +288,13 @@ async function InitPeerconnect() {
         isSetRemote = true;
         const answerSDP = await peerconnetion.createAnswer(answerOption);
         if (socket) {
-            await socket.emit('message', [room,selfid, {
+            await socket.emit('message',  {
+            	roomId:room,
+            	 id:selfid,
                 type: 1,
                 sdp: answerSDP
-            }]);
+            });
+            console.log('=======> send answerSDP:' + answerSDP);
         }
         //发送出去
         const setLocalDescriptionErr = await peerconnetion.setLocalDescription(answerSDP);
@@ -303,12 +315,16 @@ var bitrateRecvSeries;
 
 var lastResult;
 var graphInterval = null;
+
+
 //     结束webrtc 
 function peerCloseFun() {
     isStartRecored = false;
-    for (const track of localStream.getTracks()) {
-        // peerconnetion.removeTrack(track);
-        track.stop();
+    if(localStream){
+	    for (const track of localStream.getTracks()) {
+	        // peerconnetion.removeTrack(track);
+	        track.stop();
+	    }
     }
     sendDC.close();
     recvDC.close();
@@ -500,9 +516,10 @@ btnConnect.onclick = () => {
 
     //recieve message
     socket.on('joined', (data) => {
-        const {room, id} = data;
-        if (.length < 1) {
-             = id
+    	   console.log('joined data :' + JSON.stringify(data));
+        const {roomId, id} = data;
+        if (id.length < 1) {
+            selfid  = id
         }
         btnConnect.disabled = true;
         btnLeave.disabled = false;
@@ -513,7 +530,8 @@ btnConnect.onclick = () => {
 
     });
     socket.on('otherJoined', (data) => {
-        const {room, id} = data;
+    	   console.log('otherJoined :' + JSON.stringify(data));
+        const {roomId, id} = data;
         outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         outputArea.value = outputArea.value + 'otherJoined' + id + '\r';
         btnConnect.disabled = true;
@@ -526,7 +544,8 @@ btnConnect.onclick = () => {
     });
 
     socket.on('leaved', (data) => {
-        const {room, id} = data;
+    	console.log('leaved :' + JSON.stringify(data));
+        const {roomId, id} = data;
         btnConnect.disabled = false;
         btnLeave.disabled = true;
         inputArea.disabled = true;
@@ -544,6 +563,7 @@ btnConnect.onclick = () => {
         if (id === selfid) {
             return;
         }
+        console.log('message :' + JSON.stringify(data));
         const type = data.type;
         switch (type) {
             case 0: {// offer
@@ -602,7 +622,10 @@ btnSend.onclick = () => {
 
 btnLeave.onclick = () => {
     room = inputRoom.value;
-    socket.emit('leave', [room,selfid]);
+    socket.emit('leave', {
+    				roomId:room,
+            	 	id:selfid
+            	 });
 }
 
 inputArea.onkeypress = (event) => {
@@ -610,7 +633,11 @@ inputArea.onkeypress = (event) => {
     if (event.keyCode == 13) { //回车发送消息
         var data = inputArea.value;
         data = userName.value + ':' + data;
-        socket.emit('message', [room,selfid, data]);
+        socket.emit('message', {
+        	roomId:room,
+            	 id:selfid,
+            	 data
+            	 });
         inputArea.value = '';
         event.preventDefault();//阻止默认行为
     }
