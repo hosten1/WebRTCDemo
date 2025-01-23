@@ -616,7 +616,7 @@ btnConnect.onclick = () => {
 btnSend.onclick = () => {
     var data = inputArea.value;
     data = userName.value + ':' + data;
-    socket.emit('message', room, data);
+    socket.emit('chat', room, data);
     inputArea.value = '';
 }
 

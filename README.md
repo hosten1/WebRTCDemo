@@ -1,4 +1,20 @@
 # WebRTCDemo
+# 运行方式
+ 安装依赖
+```bash
+npm install
+```
+ 启动
+```bash
+./restartSocketIo.sh
+```
+# 信令格式
+ 加入房间
+发送如下信令：
+```js
+socket.emit('join', roomId);
+```
+服务会返回状态所以这里可以使用emitwithAck
 # 信令格式 
 ## 加入房间
 发送如下信令：

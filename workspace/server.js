@@ -77,6 +77,13 @@ io.on('connection', function (socket) {
 	        console.log("Invalid data type for 'data'.");
 	    }
     });
+    socket.on('chat', (data,cb) => {
+        console.log('===>request chat= ' + JSON.stringify(data) );
+        socket.to(data.roomId).emit('message', data);
+        if (cb) {
+	            cb({ code: 0 });
+	    }
+    });
     socket.on('leave', (room)=> {
     	console.log('===>leave request room= ' + JSON.stringify(room) );
 		var myRoom = io.sockets.adapter.rooms[room];
