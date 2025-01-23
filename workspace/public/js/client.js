@@ -597,6 +597,11 @@ btnConnect.onclick = () => {
             default:
                 break;
         }
+        socket.on('chat', (data) => {
+            outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
+
+            outputArea.value = outputArea.value + JSON.stringify(data) + '\r';
+        });
         // outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
         // outputArea.value = outputArea.value + data + '\r';
     });
@@ -633,7 +638,7 @@ inputArea.onkeypress = (event) => {
     if (event.keyCode == 13) { //回车发送消息
         var data = inputArea.value;
         data = userName.value + ':' + data;
-        socket.emit('message', {
+        socket.emit('chat', {
         	roomId:room,
             	 id:selfid,
             	 data

@@ -79,7 +79,7 @@ io.on('connection', function (socket) {
     });
     socket.on('chat', (data,cb) => {
         console.log('===>request chat= ' + JSON.stringify(data) );
-        socket.to(data.roomId).emit('message', data);
+        socket.to(data.roomId).emit('chat', data);
         if (cb) {
 	            cb({ code: 0 });
 	    }
