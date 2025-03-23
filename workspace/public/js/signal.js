@@ -88,8 +88,10 @@ class Signal {
         });
     }
 
-    sendMessage(room, data) {
-        this.socket.emit('chat', room, data);
+    sendMessage(room, userId, data) {
+        data.roomId = room;
+        data.userId = userId;
+        this.socket.emit('message', data);
     }
 
     leave(room, userId) {

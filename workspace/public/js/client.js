@@ -53,24 +53,17 @@ var btnSend = document.querySelector('button#send');
 var videoBindwidthSelect = document.getElementById('videoBindwidth');
 // var birateCanvas  = document.getElementById('birateCanvas');
 // var packetsCanvas = document.getElementById('packetsCanvas');
+var localStream;
+
+getUserMedia();
+startWebCam();
 
 const signal = new Signal();
-const peerClient = new PeerClient(config);
+const peerClient = new PeerClient(localStream);
+
 
 // 防止重复去获取设备列表
 var isGet = false;
-var isStartRecored = false;
-var isSetRemote = false;
-// 是不是主叫
-let peerconnetion = null;
-let sendDC = null;
-let recvDC = null;
-var isOffer = true;
-var recvSdp = {
-    sdp: null,
-    type: null
-};
-var cacheCandidateMsg = [];
 // 随机生成一个用户id  '9215' + 16位随机数，不可以修改
 
 const _selfid = '9215' + Math.random().toString(36).slice(2, 18);
@@ -181,36 +174,64 @@ signal.onLeaved((data) => {
 
 
 signal.onMessage((offerSdp, senderId) => {
-    peerClient.createAnswer(answerSdp);
+    peerClient.createAnswer(offerSdp, (answerSDP) => {
+        // if (socket) {
+        //     await socket.emit('message', {
+        //         roomId: room,
+        //         id: selfid,
+        //         type: 1,
+        //         sdp: answerSDP
+        //     });
+        //     console.log('=======> send answerSDP:' + answerSDP);
+        // }
+        signal.sendMessage(room, _selfid, { type: 0, sdp: answerSDP });
+
+    });
 }, (answerSdp, senderId) => {
-    peerClient.setRemoteDescription(offerSdp);
+    peerClient.setRemoteDescription(answerSdp);
 }, (candidate, senderId) => {
-    peerClient.addIceCandidate(candidate);
+    peerClient.addcandidateFUN(candidate);
 
 });
 
 // 使用 peerClient 处理 WebRTC 逻辑
 async function InitPeerconnect() {
-    console.log('开始初始化摄像头。。。。');
-    await startWebCam();
-    await getUserMedia();
-    console.log('结束初始化摄像头。。。。');
+    // console.log('开始初始化摄像头。。。。');
+    // await startWebCam();
+    // await getUserMedia();
+    // console.log('结束初始化摄像头。。。。');
 
     await peerClient.initPeerConnection((message) => {
         if (message.type === 'candidate') {
-            signal.sendMessage(room, { type: 2, candidate: message.candidate });
+            // if (socket) {
+            //     if (ev.candidate) {
+            //         await socket.emit('message', {
+            //             roomId: room,
+            //             id: selfid,
+            //             type: 2,
+            //             candidate: ev.candidate
+            //         }, (data) => {
+            //             console.log('发送成功了 ' + JSON.stringify(data));
+            //         });
+            //     }
+
+            // }
+            signal.sendMessage(room, _selfid, { type: 2, candidate: message.candidate });
         } else if (message.type === 'track') {
             remoteVideoPlayer.srcObject = message.stream;
+        } else if (message.type === 'iceConnectionState') {
+            if (message.state === 'connected') {
+                startGraph();
+                // setTimeout(() => {
+                //     // RTCDataChannel
+                //     sendDC.send('你好 我是 ' + selfid);
+                // }, 5000);
+            }
         }
     });
-
-    if (isOffer) {
-        await peerClient.createOffer((message) => {
-            signal.sendMessage(room, { type: 0, sdp: message.sdp });
-        });
-    } else {
-        await peerClient.setRemoteDescription(recvSdp);
-    }
+    peerClient.createOffer((offerSDP) => {
+        signal.sendMessage(room, _selfid, { type: 0, sdp: offerSDP });
+    });
 }
 var bitrateGraph;
 var bitrateSeries;
