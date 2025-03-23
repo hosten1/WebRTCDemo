@@ -40,18 +40,18 @@ io.on('connection', (socket) => {
     console.log('New connection:', socket.id);
 
     // 加入房间
-    socket.on('join', ({ roomId, userId },ack) => {
-        console.log(`User ${userId} joining room ${roomId}`);
+    socket.on('join', ({ roomId, userId }, ack) => {
+        console.log(`server User ${userId} joining room ${roomId}`);
 
         // 获取或创建房间
-        let room = rooms.get(roomId);
+        var room = rooms.get(roomId);
         if (!room) {
             room = new Room(roomId);
             rooms.set(roomId, room);
         }
 
         // 将用户加入房间
-        room.addPeer(socket, userId,ack);
+        room.addPeer(socket, userId, ack);
 
         // 监听断开连接
         socket.on('disconnect', () => {

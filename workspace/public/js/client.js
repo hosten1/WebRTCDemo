@@ -430,16 +430,15 @@ downloadBtn.onclick = async () => {
 
 // 加入房间按钮
 joinBtnConnect.onclick = () => {
-    //send message
+    // Ensure _selfid and room are defined correctly
+    console.log('Joining room:', room, 'with user ID:', _selfid); // Debugging line
     signal.join({
         roomId: room, //房间id
         userId: _selfid  //用户id 当前客户端的id
     }, (data) => {
-        // id 是服务的socket标识 roomId 是房间id targetId 是对方id，  userList是存在房间的用户列表
-        const { id,
-            roomId,
-            targetId,
-            userList } = data;
+        // Check if data contains the expected values
+        console.log('Join response data:', data); // Debugging line
+        const { id, roomId, targetId, userList } = data;
 
         btnConnect.disabled = true;
         btnLeave.disabled = false;
