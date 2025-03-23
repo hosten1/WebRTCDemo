@@ -166,4 +166,4 @@ class PeerClient {
     }
 }
 
-module.exports = PeerClient;
+export default PeerClient;

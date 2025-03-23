@@ -1,5 +1,5 @@
-const Signal = require('./signal.js');
-const PeerClient = require('./PeerClient.js');
+import Signal from './signal.js';
+import PeerClient from './PeerClient.js';
 
 // const startReocrdBtn = document.getElementById("startReocrd_btn");
 // const stopReocrdBtn = document.getElementById("stopReocrd_btn");

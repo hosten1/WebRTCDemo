@@ -77,4 +77,4 @@ class Signal {
     }
 }
 
-module.exports = Signal;
+export default Signal;
