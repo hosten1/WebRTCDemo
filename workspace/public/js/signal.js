@@ -1,6 +1,7 @@
 class Signal {
     constructor() {
-        this.socket = io('https://localhost:443');
+        // this.socket = io('https://localhost:443');
+        this.socket = io('wss://43.134.4.247:443');
     }
 
     join(dataIn, callback) {
