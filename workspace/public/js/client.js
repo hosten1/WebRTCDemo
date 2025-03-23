@@ -43,7 +43,7 @@ var userName = document.querySelector('input#username');
 userName.value = randomString(6);
 var inputRoom = document.querySelector('input#room');
 inputRoom.value = 123456;
-var btnConnect = document.querySelector('button#connect');
+var joinBtnConnect = document.querySelector('button#connect');
 var btnLeave = document.querySelector('button#leave');
 var outputArea = document.querySelector('textarea#output');
 var inputArea = document.querySelector('textarea#input');
@@ -255,13 +255,8 @@ function peerCloseFun() {
             track.stop();
         }
     }
-    sendDC.close();
-    recvDC.close();
-    sendDC = null;
-    recvDC = null;
-    peerconnetion.close();
+    peerClient.close();
     localStream = null;
-    cacheCandidateMsg = [];
     videoPlayer.srcObject = null;
     remoteVideoPlayer.srcObject = null;
 
@@ -269,7 +264,6 @@ function peerCloseFun() {
     isOffer = true;
     recvSdp = null;
     inputArea.value = '';
-    peerconnetion = null;
     videoBindwidthSelect.disabled = true;
     if (graphInterval) {
         clearInterval(graphInterval);
@@ -432,8 +426,10 @@ downloadBtn.onclick = async () => {
 
 }
 
-btnConnect.onclick = () => {
-
+// 加入房间按钮
+joinBtnConnect.onclick = () => {
+    //send message
+    room = inputRoom.value;
     signal.join({
         roomId: room, //房间id
         userId: _selfid  //用户id 当前客户端的id
@@ -493,7 +489,7 @@ videoBindwidthSelect.onchange = () => {
     var vSender = null;
     var aSender = null;
     // 从peer connection中获取senders 然后遍历查找到视频的sender
-    peerconnetion.getSenders().forEach(sender => {
+    peerClient.peerConnection.getSenders().forEach(sender => {
         if (sender && sender.track.kind === 'video') {
             vSender = sender;
         }
