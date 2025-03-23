@@ -1,5 +1,8 @@
 'use strict'
 
+import Signal from './signal.js';
+import PeerClient from './PeerClient.js';
+
 // const startReocrdBtn = document.getElementById("startReocrd_btn");
 // const stopReocrdBtn = document.getElementById("stopReocrd_btn");
 //获取 DOM 树节点
@@ -51,23 +54,8 @@ var videoBindwidthSelect = document.getElementById('videoBindwidth');
 // var birateCanvas  = document.getElementById('birateCanvas');
 // var packetsCanvas = document.getElementById('packetsCanvas');
 
-const config = {
-    // bundlePolicy: 'balanced',
-    // certificates?: RTCCertificate[];
-    // iceCandidatePoolSize?: number;
-    // iceTransportPolicy: "all",//  public relay
-    // rtcpMuxPolicy: 'negotiate',
-    iceServers: [
-        {
-            urls: "turn:39.97.110.12:3478",
-            username: "lym",
-            credential: "123456"
-        }
-    ]
-};
-var socket;
-var room;
-var localStream;
+const signal = new Signal();
+const peerClient = new PeerClient(config);
 
 // 防止重复去获取设备列表
 var isGet = false;
@@ -83,7 +71,9 @@ var recvSdp = {
     type: null
 };
 var cacheCandidateMsg = [];
-var selfid = '';
+// 随机生成一个用户id  '9215' + 16位随机数，不可以修改
+
+const _selfid = '9215' + Math.random().toString(36).slice(2, 18);
 
 function randomString(length) {
     var str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -171,138 +161,56 @@ function getUserMedia() {
     });
 }
 
+// 使用 signal 处理 socket 事件
+signal.join(inputRoom.value, (data) => {
+    console.log('joined data :' + JSON.stringify(data));
+    // 处理加入房间后的逻辑
+});
+
+signal.onOtherJoined((data) => {
+    console.log('otherJoined :' + JSON.stringify(data));
+    // 处理其他用户加入的逻辑
+    InitPeerconnect();
+});
+
+signal.onLeaved((data) => {
+    console.log('leaved :' + JSON.stringify(data));
+    // 处理用户离开的逻辑
+    peerCloseFun();
+});
+
+
+signal.onMessage((offerSdp, senderId) => {
+    peerClient.createAnswer(answerSdp);
+}, (answerSdp, senderId) => {
+    peerClient.setRemoteDescription(offerSdp);
+}, (candidate, senderId) => {
+    peerClient.addIceCandidate(candidate);
+
+});
+
+// 使用 peerClient 处理 WebRTC 逻辑
 async function InitPeerconnect() {
     console.log('开始初始化摄像头。。。。');
     await startWebCam();
     await getUserMedia();
     console.log('结束初始化摄像头。。。。');
 
-    peerconnetion = new RTCPeerConnection(config);
-    const opt = {
-        negotiated: true,
-        id : 0
-    };
-    
-    sendDC = peerconnetion.createDataChannel('my channal',opt);
-    sendDC.onopen = function () {
-        console.log("sendDC datachannel open");
-    };
-  
-    sendDC.onclose = function () {
-        console.log("sendDC datachannel close");
-    };
-    sendDC.onmessage = function (event) {
-            console.log(" recvDC received: " + event.data);
-    };
-    peerconnetion.ondatachannel = (ev)=>{
-        // recvDC = ev.channel;
-        // recvDC.onmessage = function (event) {
-        //     console.log(" recvDC received: " + event.data);
-        // };
-    
-        // recvDC.onopen = function () {
-        //     console.log("recvDC datachannel open");
-        // };
-      
-        // recvDC.onclose = function () {
-        //     console.log("recvDC datachannel close");
-        // };
-    };
-    peerconnetion.ontrack = (ev) => {
-        if (ev.streams && ev.streams[0]) {
-            remoteVideoPlayer.srcObject = ev.streams[0];
-        } else {
-            const inboundStream = new MediaStream();
-            inboundStream.addTrack(ev.track);
-            remoteVideoPlayer.srcObject = inboundStream;
+    await peerClient.initPeerConnection((message) => {
+        if (message.type === 'candidate') {
+            signal.sendMessage(room, { type: 2, candidate: message.candidate });
+        } else if (message.type === 'track') {
+            remoteVideoPlayer.srcObject = message.stream;
         }
-        // if (trackEvent.track.kind === 'video') {
-        //     remoteVideoPlayer.srcObject = trackEvent[0];
-        // }
-    };
-    peerconnetion.onicecandidate = async (ev) => {
-        console.log('=======> send onicecandidate:' + JSON.stringify(ev.candidate));
-        if (socket) {
-        	if(ev.candidate){
-	        	await socket.emit('message',  {
-	            	 roomId:room,
-	            	 id:selfid,
-	                type: 2,
-	                candidate: ev.candidate
-	            },(data)=>{
-	                console.log('发送成功了 '+JSON.stringify(data));
-	            });
-        	}
-            
-        }
-    };
-    peerconnetion.oniceconnectionstatechange = (ev) => {
-        outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + JSON.stringify(peerconnetion.iceConnectionState) + '\r';
-        if (peerconnetion.iceConnectionState === 'connected') {
-            startGraph();
-            setTimeout(() => {
-                // RTCDataChannel
-                sendDC.send('你好 我是 ' + selfid);
-            }, 5000);
-        }
-    };
-    //添加本地媒体流
-    for (const track of localStream.getTracks()) {
-        peerconnetion.addTrack(track);
-    }
+    });
+
     if (isOffer) {
-        const offerOption = {
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-            'googNumSimulcastLayers':2,
-        };
-        const offerSdp = await peerconnetion.createOffer(offerOption);
-        if (socket) {
-        	
-            await socket.emit('message', {
-            	 roomId:room,
-            	 id:selfid,
-                type: 0,
-                sdp: offerSdp
-            });
-            console.log('=======> send offerSdp:' + offerSdp);
-        }
-        const errLocalDescription = await peerconnetion.setLocalDescription(offerSdp);
-        if (errLocalDescription) {
-            console.error('setLocalDescription err :' + JSON.stringify(offerSdp));
-            return;
-        }
+        await peerClient.createOffer((message) => {
+            signal.sendMessage(room, { type: 0, sdp: message.sdp });
+        });
     } else {
-        const answerOption = {
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-        };
-        // RTCSessionDescriptionInit init = 
-        console.log('Answer setRemoteDescription' + JSON.stringify(recvSdp));
-        const errsetRemoteDescription = await peerconnetion.setRemoteDescription(recvSdp);
-        if (errsetRemoteDescription) {
-            console.error('answer setRemoteDescription err :' + JSON.stringify(recvSdp));
-            return;
-        }
-        isSetRemote = true;
-        const answerSDP = await peerconnetion.createAnswer(answerOption);
-        if (socket) {
-            await socket.emit('message',  {
-            	roomId:room,
-            	 id:selfid,
-                type: 1,
-                sdp: answerSDP
-            });
-            console.log('=======> send answerSDP:' + answerSDP);
-        }
-        //发送出去
-        const setLocalDescriptionErr = await peerconnetion.setLocalDescription(answerSDP);
-        addcandidateFUN();
-        videoBindwidthSelect.disabled = false;
-
+        await peerClient.setRemoteDescription(recvSdp);
     }
-
 }
 var bitrateGraph;
 var bitrateSeries;
@@ -320,11 +228,11 @@ var graphInterval = null;
 //     结束webrtc 
 function peerCloseFun() {
     isStartRecored = false;
-    if(localStream){
-	    for (const track of localStream.getTracks()) {
-	        // peerconnetion.removeTrack(track);
-	        track.stop();
-	    }
+    if (localStream) {
+        for (const track of localStream.getTracks()) {
+            // peerconnetion.removeTrack(track);
+            track.stop();
+        }
     }
     sendDC.close();
     recvDC.close();
@@ -460,12 +368,6 @@ async function startRecord() {
 
 
 }
-function addcandidateFUN() {
-    cacheCandidateMsg.forEach((item, index, arr) => {
-        peerconnetion.addIceCandidate(item)
-    }); // undefined
-    cacheCandidateMsg = [];
-}
 async function stopRecord() {
 
     // console.log(mediaRecorder.state);
@@ -511,111 +413,25 @@ downloadBtn.onclick = async () => {
 
 btnConnect.onclick = () => {
 
-    //connect
-    socket = io.connect();
+    signal.join({
+        roomId: room, //房间id
+        userId: _selfid  //用户id 当前客户端的id
+    }, (data) => {
+        // id 是服务的socket标识 roomId 是房间id targetId 是对方id，  userList是存在房间的用户列表
+        const { id,
+            roomId,
+            targetId,
+            userList } = data;
 
-    //recieve message
-    socket.on('joined', (data) => {
-    	   console.log('joined data :' + JSON.stringify(data));
-        const {roomId, id} = data;
-        if (id.length < 1) {
-            selfid  = id
-        }
         btnConnect.disabled = true;
         btnLeave.disabled = false;
         inputArea.disabled = false;
         btnSend.disabled = false;
         recordBtn.disabled = false;
         snapshotBtn.disabled = false;
-
-    });
-    socket.on('otherJoined', (data) => {
-    	   console.log('otherJoined :' + JSON.stringify(data));
-        const {roomId, id} = data;
-        outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + 'otherJoined' + id + '\r';
-        btnConnect.disabled = true;
-        btnLeave.disabled = false;
-        inputArea.disabled = false;
-        btnSend.disabled = false;
         // 初始化为webrtc 相关 这里只要对方一加入就 启动webrtc
         isOffer = true;
-        InitPeerconnect();
     });
-
-    socket.on('leaved', (data) => {
-    	console.log('leaved :' + JSON.stringify(data));
-        const {roomId, id} = data;
-        btnConnect.disabled = false;
-        btnLeave.disabled = true;
-        inputArea.disabled = true;
-        btnSend.disabled = true;
-        recordBtn.disabled = true;
-        snapshotBtn.disabled = true;
-        peerCloseFun();
-        outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        outputArea.value = outputArea.value + 'leaved' + id + '\r';
-        socket.disconnect();
-    });
-
-    socket.on('message', (data) => {
-        const id = data.id;
-        if (id === selfid) {
-            return;
-        }
-        console.log('message :' + JSON.stringify(data));
-        const type = data.type;
-        switch (type) {
-            case 0: {// offer
-                isOffer = false;
-                recvSdp = data.sdp;
-                InitPeerconnect();
-            }
-                break;
-            case 1: {// answer
-                console.log('offer setRemoteDescription' + JSON.stringify(data.sdp));
-                peerconnetion.setRemoteDescription(data.sdp);
-                isSetRemote = true;
-                addcandidateFUN();
-                videoBindwidthSelect.disabled = false;
-            }
-                break;
-            case 2: {// candidate
-                if (isSetRemote === true) {
-                    peerconnetion.addIceCandidate(data.candidate);
-                    addcandidateFUN();
-                } else {
-                    cacheCandidateMsg.push(data.candidate);
-                   
-                }
-                outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-
-                outputArea.value = outputArea.value + JSON.stringify(data.candidate) + '\r';
-            }
-                break;
-
-            default:
-                break;
-        }
-        socket.on('chat', (data) => {
-            outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-
-            outputArea.value = outputArea.value + JSON.stringify(data) + '\r';
-        });
-        // outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-        // outputArea.value = outputArea.value + data + '\r';
-    });
-
-    socket.on('disconnect', (socket) => {
-        btnConnect.disabled = false;
-        btnLeave.disabled = true;
-        inputArea.disabled = true;
-        btnSend.disabled = true;
-    });
-
-    //send message
-    room = inputRoom.value;
-    socket.emit('join', room);
 }
 
 btnSend.onclick = () => {
@@ -628,9 +444,9 @@ btnSend.onclick = () => {
 btnLeave.onclick = () => {
     room = inputRoom.value;
     socket.emit('leave', {
-    				roomId:room,
-            	 	id:selfid
-            	 });
+        roomId: room,
+        id: selfid
+    });
 }
 
 inputArea.onkeypress = (event) => {
@@ -639,10 +455,10 @@ inputArea.onkeypress = (event) => {
         var data = inputArea.value;
         data = userName.value + ':' + data;
         socket.emit('chat', {
-        	roomId:room,
-            	 id:selfid,
-            	 data
-            	 });
+            roomId: room,
+            id: selfid,
+            data
+        });
         inputArea.value = '';
         event.preventDefault();//阻止默认行为
     }

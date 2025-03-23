@@ -10,7 +10,7 @@ class Room {
     }
 
     // 添加对等端
-    addPeer(socket, userId) {
+    addPeer(socket, userId, ack) {
         if (this.peers.size >= MAX_PEERS) {
             socket.emit('error', { message: 'Room is full (max 6 users)' });
             return;
@@ -24,19 +24,32 @@ class Room {
         // 创建 Peer 实例
         const peer = new Peer(socket, userId, this);
         this.peers.set(userId, peer);
-           // 加入房间
+        // 加入房间
         socket.join(this.roomId);
 
         // 通知其他用户有新用户加入
         var data = {
-            roomId:this.roomId,
-            id:socket.id
+            roomId: this.roomId,
+            id: socket.id
         }
         this.broadcast('otherJoined', data, userId);
 
         // 发送当前用户列表给新用户
         const userList = Array.from(this.peers.keys()).filter(id => id !== userId);
-        peer.send('joined', {id:socket.id, roomId: this.roomId, targetId:userId, userList });
+        const callBackData = {
+            id: socket.id,
+            roomId: this.roomId,
+            targetId: userId,
+            userList
+        };
+        // 如果支持ack 返回，就使用这个返回消息到客户端
+        if (ack) {
+            ack(callBackData);
+        } else {
+            // 这个是为了兼容老版本
+            peer.send('joined', callBackData);
+        }
+
 
         console.log(`User ${userId} joined room ${this.roomId}`);
     }
@@ -51,13 +64,13 @@ class Room {
         // 离开房间
         // this.socket.leave(this.roomId);
         peer.socket.leave(this.roomId);
-        
+
         // 通知其他用户有用户离开
         var data = {
-            roomId:this.roomId,
-            userId:userId
+            roomId: this.roomId,
+            userId: userId
         }
-        this.broadcast('leave', data,userId);
+        this.broadcast('leave', data, userId);
 
         console.log(`User ${userId} left room ${this.roomId}`);
     }
@@ -65,11 +78,11 @@ class Room {
     // 处理信令消息
     handleMessage(senderId, data) {
         // 应该验证下消息的合法性，防止崩溃
-        if(!data.targetId) {
+        if (!data.targetId) {
             console.error(`Target user ${targetId} not found in room ${this.roomId}`);
             return;
         }
-        
+
         const { targetId } = data;
 
         if (!this.peers.has(targetId)) {
@@ -113,7 +126,7 @@ class Room {
     broadcast(event, data, excludeUserId = null) {
         this.peers.forEach((peer, userId) => {
             if (userId !== excludeUserId) {
-                peer.send(event, data,userId);
+                peer.send(event, data, userId);
             }
         });
     }

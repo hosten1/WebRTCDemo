@@ -40,7 +40,7 @@ io.on('connection', (socket) => {
     console.log('New connection:', socket.id);
 
     // 加入房间
-    socket.on('join', ({ roomId, userId }) => {
+    socket.on('join', ({ roomId, userId },ack) => {
         console.log(`User ${userId} joining room ${roomId}`);
 
         // 获取或创建房间
@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
         }
 
         // 将用户加入房间
-        room.addPeer(socket, userId);
+        room.addPeer(socket, userId,ack);
 
         // 监听断开连接
         socket.on('disconnect', () => {
