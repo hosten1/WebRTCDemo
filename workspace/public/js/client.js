@@ -43,6 +43,8 @@ var userName = document.querySelector('input#username');
 userName.value = randomString(6);
 var inputRoom = document.querySelector('input#room');
 inputRoom.value = 123456;
+const room = inputRoom.value;
+
 var joinBtnConnect = document.querySelector('button#connect');
 var btnLeave = document.querySelector('button#leave');
 var outputArea = document.querySelector('textarea#output');
@@ -429,7 +431,6 @@ downloadBtn.onclick = async () => {
 // 加入房间按钮
 joinBtnConnect.onclick = () => {
     //send message
-    room = inputRoom.value;
     signal.join({
         roomId: room, //房间id
         userId: _selfid  //用户id 当前客户端的id
