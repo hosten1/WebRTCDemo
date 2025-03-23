@@ -1,12 +1,11 @@
 class Signal {
     constructor() {
-        // this.socket = io('https://localhost:443');
-        this.socket = io('wss://43.134.4.247:443');
+        this.socket = io();
     }
 
     join(dataIn, callback) {
         // Send join message
-        this.socket.emit('join', dataIn);
+        this.socket.emit('join', dataIn, callback);
 
         // Receive acknowledgment of joining
         this.socket.on('joined', (data) => {
@@ -78,4 +77,4 @@ class Signal {
     }
 }
 
-export default Signal;
+module.exports = Signal;

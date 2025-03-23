@@ -40,7 +40,8 @@ io.on('connection', (socket) => {
     console.log('New connection:', socket.id);
 
     // 加入房间
-    socket.on('join', ({ roomId, userId }, ack) => {
+    socket.on('join', (data, ack) => {
+        const { roomId, userId } = data;
         console.log(`server User ${userId} joining room ${roomId}`);
 
         // 获取或创建房间

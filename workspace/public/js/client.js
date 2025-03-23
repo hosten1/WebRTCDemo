@@ -1,7 +1,5 @@
-'use strict'
-
-import Signal from './signal.js';
-import PeerClient from './PeerClient.js';
+const Signal = require('./signal.js');
+const PeerClient = require('./PeerClient.js');
 
 // const startReocrdBtn = document.getElementById("startReocrd_btn");
 // const stopReocrdBtn = document.getElementById("stopReocrd_btn");
@@ -155,12 +153,6 @@ function getUserMedia() {
         });
     });
 }
-
-// 使用 signal 处理 socket 事件
-signal.join(inputRoom.value, (data) => {
-    console.log('joined data :' + JSON.stringify(data));
-    // 处理加入房间后的逻辑
-});
 
 signal.onOtherJoined((data) => {
     console.log('otherJoined :' + JSON.stringify(data));
