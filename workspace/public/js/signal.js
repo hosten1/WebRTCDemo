@@ -1,23 +1,15 @@
 class Signal {
     constructor() {
-        this.socket = io.connect();
+        this.socket = io('https://localhost:443');
     }
 
     join(dataIn, callback) {
-        //connect
-        socket = io.connect();
-
-        //recieve message
-        socket.on('joined', (data) => {
-            console.log('joined data :' + JSON.stringify(data));
-        });
-
-        //send message
-        // socket.emit('join', dataIn);
+        // Send join message
         this.socket.emit('join', dataIn);
+
+        // Receive acknowledgment of joining
         this.socket.on('joined', (data) => {
             console.log('joined ack ===>', data);
-            // const { roomId, id } = data;
             callback(data);
         });
     }
@@ -54,35 +46,21 @@ class Signal {
                     break;
                 case 1: {// answer
                     console.log('offer setRemoteDescription' + JSON.stringify(data.sdp));
-                    const { senderId, sdp } = data;
+                    const { senderId, sdp: answerSdp } = data;
                     if (answerSdpCallback) {
-                        answerSdpCallback(sdp, senderId);
+                        answerSdpCallback(answerSdp, senderId);
                     }
-                    // peerconnetion.setRemoteDescription(data.sdp);
-                    // isSetRemote = true;
-                    // _addcandidateFUN();
-                    // videoBindwidthSelect.disabled = false;
                 }
                     break;
                 case 2: {// candidate
-                    const { senderId, candidate } = data;
+                    const { senderId: candidateSenderId, candidate } = data;
                     if (candidateCallback) {
-                        candidateCallback(candidate, senderId);
+                        candidateCallback(candidate, candidateSenderId);
                     }
-                    //     if (isSetRemote === true) {
-                    //         peerconnetion.addIceCandidate(data.candidate);
-                    //         _addcandidateFUN();
-                    //     } else {
-                    //         cacheCandidateMsg.push(data.candidate);
-
-                    //     }
-                    //     outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-
-                    //     outputArea.value = outputArea.value + JSON.stringify(data.candidate) + '\r';
                 }
                     break;
-
                 default:
+                    console.warn('Unknown message type:', type);
                     break;
             }
         });

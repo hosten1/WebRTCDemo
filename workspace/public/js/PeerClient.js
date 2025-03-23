@@ -8,7 +8,7 @@ class PeerClient {
         this._recvDC = null;
         this._isOffer = true;
         this._cacheCandidateMsg = [];
-        const _config = {
+        this._config = {
             // bundlePolicy: 'balanced',
             // certificates?: RTCCertificate[];
             // iceCandidatePoolSize?: number;
@@ -26,49 +26,47 @@ class PeerClient {
 
 
     async initPeerConnection(callback) {
-        this.peerConnection = new RTCPeerConnection(_config);
+        this.peerConnection = new RTCPeerConnection(this._config);
         // Add event listeners for the peer connection
         const opt = {
             negotiated: true,
             id: 0
         };
 
-        this._sendDC = peerconnetion.createDataChannel('my channal', opt);
-        this._sendDC.onopen = function () {
+        this._sendDC = this.peerConnection.createDataChannel('my channel', opt);
+        this._sendDC.onopen = () => {
             console.log("sendDC datachannel open");
         };
 
-        this._sendDC.onclose = function () {
+        this._sendDC.onclose = () => {
             console.log("sendDC datachannel close");
         };
-        this._sendDC.onmessage = function (event) {
-            console.log(" recvDC received: " + event.data);
+        this._sendDC.onmessage = (event) => {
+            console.log("recvDC received: " + event.data);
         };
-        peerconnetion.ondatachannel = (ev) => {
-            // this._recvDC = ev.channel;
-            // this._recvDC.onmessage = function (event) {
-            //     console.log(" recvDC received: " + event.data);
-            // };
+        this.peerConnection.ondatachannel = (ev) => {
+            this._recvDC = ev.channel;
+            this._recvDC.onmessage = (event) => {
+                console.log("recvDC received: " + event.data);
+            };
 
-            // this._recvDC.onopen = function () {
-            //     console.log("recvDC datachannel open");
-            // };
+            this._recvDC.onopen = () => {
+                console.log("recvDC datachannel open");
+            };
 
-            // this._recvDC.onclose = function () {
-            //     console.log("recvDC datachannel close");
-            // };
+            this._recvDC.onclose = () => {
+                console.log("recvDC datachannel close");
+            };
         };
 
-        peerconnetion.oniceconnectionstatechange = (ev) => {
-            // outputArea.scrollTop = outputArea.scrollHeight;//窗口总是显示最后的内容
-            // outputArea.value = outputArea.value + JSON.stringify(peerconnetion.iceConnectionState) + '\r';
-            if (peerconnetion.iceConnectionState === 'connected') {
-                callback({ type: 'iceConnectionState', candidate: peerconnetion.iceConnectionState });
+        this.peerConnection.oniceconnectionstatechange = () => {
+            if (this.peerConnection.iceConnectionState === 'connected') {
+                callback({ type: 'iceConnectionState', candidate: this.peerConnection.iceConnectionState });
             }
         };
         //添加本地媒体流
-        for (const track of localStream.getTracks()) {
-            peerconnetion.addTrack(track);
+        for (const track of this._localStream.getTracks()) {
+            this.peerConnection.addTrack(track);
         }
         this.peerConnection.onicecandidate = (ev) => {
             console.log('=======> send onicecandidate:' + JSON.stringify(ev.candidate));
@@ -98,9 +96,9 @@ class PeerClient {
             'googNumSimulcastLayers': 1,
         };
         const offerSdp = await this.peerConnection.createOffer(offerOption);
-        const errLocalDescription = await peerconnetion.setLocalDescription(offerSdp);
+        const errLocalDescription = await this.peerConnection.setLocalDescription(offerSdp);
         if (errLocalDescription) {
-            console.error('setLocalDescription err :' + JSON.stringify(offerSdp));
+            console.error('setLocalDescription error: ' + JSON.stringify(errLocalDescription));
             return;
         }
         callback({ type: 'offer', sdp: offerSdp });
@@ -110,21 +108,19 @@ class PeerClient {
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
         };
-        // RTCSessionDescriptionInit init = 
-        console.log('Answer errSetRD' + JSON.stringify(recvSdp));
-        // RTCSessionDescriptionInit init = 
-        const errSetRD = await peerconnetion.setRemoteDescription(recvSdp);
+        console.log('Answer received: ' + JSON.stringify(recvSdp));
+        const errSetRD = await this.peerConnection.setRemoteDescription(recvSdp);
         if (errSetRD) {
-            console.error('answer errSetRD err :' + JSON.stringify(recvSdp));
+            console.error('setRemoteDescription error: ' + JSON.stringify(errSetRD));
             return;
         }
-        _isSetRemote = true;
-        _addcandidateFUN();
+        this._isSetRemote = true;
+        this._addcandidateFUN();
         const answerSdp = await this.peerConnection.createAnswer(answerOption);
 
-        const errLocalDescription = await peerconnetion.setLocalDescription(answerSdp);
+        const errLocalDescription = await this.peerConnection.setLocalDescription(answerSdp);
         if (errLocalDescription) {
-            console.error('setLocalDescription err :' + JSON.stringify(answerSdp));
+            console.error('setLocalDescription error: ' + JSON.stringify(errLocalDescription));
             return;
         }
 
@@ -133,29 +129,31 @@ class PeerClient {
 
     async setRemoteDescription(sdp) {
         await this.peerConnection.setRemoteDescription(sdp);
-        _isSetRemote = true;
-        _addcandidateFUN();
+        this._isSetRemote = true;
+        this._addcandidateFUN();
 
     }
     addIceCandidate(candidate) {
-        if (isSetRemote === true) {
-            cacheCandidateMsg.push(data.candidate);
-            _addcandidateFUN();
+        if (this._isSetRemote) {
+            this._cacheCandidateMsg.push(candidate);
+            this._addcandidateFUN();
         } else {
-            cacheCandidateMsg.push(data.candidate);
+            this._cacheCandidateMsg.push(candidate);
         }
     }
     _addcandidateFUN() {
-        this._cacheCandidateMsg.forEach((item, index, arr) => {
-            peerconnetion.addIceCandidate(item)
-        }); // undefined
+        this._cacheCandidateMsg.forEach((item) => {
+            this.peerConnection.addIceCandidate(item).catch(err => {
+                console.error('Failed to add ICE candidate: ', err);
+            });
+        });
         this._cacheCandidateMsg = [];
     }
 
     close() {
         if (this.peerConnection) {
-            this._sendDC.close();
-            this._recvDC.close();
+            if (this._sendDC) this._sendDC.close();
+            if (this._recvDC) this._recvDC.close();
             this._sendDC = null;
             this._recvDC = null;
             this._cacheCandidateMsg = [];
