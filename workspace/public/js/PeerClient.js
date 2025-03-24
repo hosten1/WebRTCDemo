@@ -34,8 +34,8 @@ class PeerClient {
         return connectionData;
     }
 
-    async initPeerConnection(remoteId, callback, senderId) {
-        const connectionData = this._createPeerConnection(remoteId);
+    async initPeerConnection(callback, senderId) {
+        const connectionData = this._createPeerConnection(senderId);
         const peerConnection = connectionData.peerConnection;
 
         // Add event listeners for the peer connection
@@ -99,8 +99,8 @@ class PeerClient {
         };
     }
 
-    async createOffer(remoteId, callback, senderId) {
-        const connectionData = this.peerConnections.get(remoteId);
+    async createOffer(callback, senderId) {
+        const connectionData = this.peerConnections.get(senderId);
         const peerConnection = connectionData.peerConnection;
 
         const offerOption = {
@@ -111,7 +111,7 @@ class PeerClient {
         const offerSdp = await peerConnection.createOffer(offerOption);
         const errLocalDescription = await peerConnection.setLocalDescription(offerSdp);
         if (errLocalDescription) {
-            console.error('setLocalDescription error: ' + JSON.stringify(errLocalDescription));
+            console.error('createOffer error: ' + JSON.stringify(errLocalDescription));
             return;
         }
         callback(offerSdp, senderId);
@@ -126,16 +126,17 @@ class PeerClient {
         // console.log('Answer received: ' + JSON.stringify(recvSdp));
         const errSetRD = await peerConnection.setRemoteDescription(recvSdp);
         if (errSetRD) {
-            console.error('setRemoteDescription error: ' + JSON.stringify(errSetRD));
+            console.error('createAnswer error: ' + JSON.stringify(errSetRD));
             return;
         }
         this._isSetRemote = true;
+        console.log('createAnswer with senderId:' + senderId);
         this._addcandidateFUN(senderId);
         const answerSdp = await peerConnection.createAnswer(answerOption);
 
         const errLocalDescription = await peerConnection.setLocalDescription(answerSdp);
         if (errLocalDescription) {
-            console.error('setLocalDescription error: ' + JSON.stringify(errLocalDescription));
+            console.error('createAnswer error: ' + JSON.stringify(errLocalDescription));
             return;
         }
 
@@ -144,13 +145,21 @@ class PeerClient {
 
     async setRemoteDescription(sdp, senderId) {
         const connectionData = this.peerConnections.get(senderId);
+        if (!connectionData) {
+            console.error(`No connection data found for senderId: ${senderId}`);
+            console.error('Current peerConnections keys:', Array.from(this.peerConnections.keys())); // 输出所有的键值
+            return; // 如果没有找到连接数据，直接返回
+        }
         const peerConnection = connectionData.peerConnection;
         await peerConnection.setRemoteDescription(sdp);
         this._isSetRemote = true;
-        this._addcandidateFUN();
+        console.log('setRemoteDescription with senderId:' + senderId);
+        this._addcandidateFUN(senderId);
 
     }
     addIceCandidate(candidate, senderId) {
+        console.log('addIceCandidate with senderId:' + senderId);
+
         const connectionData = this.peerConnections.get(senderId);
 
         if (connectionData._isSetRemote) {
@@ -163,6 +172,11 @@ class PeerClient {
 
     _addcandidateFUN(remoteId) {
         const connectionData = this.peerConnections.get(remoteId);
+        if (!connectionData) {
+            console.error(`No connection data found for remoteId: ${remoteId}`);
+            console.error('Current peerConnections keys:', Array.from(this.peerConnections.keys())); // 输出所有的键值
+            return; // 如果没有找到连接数据，直接返回
+        }
         connectionData._cacheCandidateMsg.forEach((item) => {
             connectionData.peerConnection.addIceCandidate(item).catch(err => {
                 console.error('Failed to add ICE candidate: ', err);

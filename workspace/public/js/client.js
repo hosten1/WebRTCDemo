@@ -12,7 +12,6 @@ const videoSource = document.getElementById("videoSource");
 var filtersSelect = document.querySelector('select#filter');
 //视频播放的标签 
 const videoPlayer = document.getElementById("videoPlayer");
-const remoteVideoPlayer = document.getElementById("remoteVideoPlayer");
 // 截取视频保存成图片
 const snapshotBtn = document.getElementById("snapshot_Btn");
 
@@ -24,6 +23,11 @@ videoPicture.height = 240;
 //录制功能
 var mediaRecorder;
 var buffer;
+const remoteVideoPlayer1 = document.getElementById("remoteVideoPlayer1");
+const remoteVideoPlayer2 = document.getElementById("remoteVideoPlayer2");
+const remoteVideoPlayer3 = document.getElementById("remoteVideoPlayer3");
+const remoteVideoPlayer4 = document.getElementById("remoteVideoPlayer4");
+
 const recoderVideoShow = document.getElementById("recoderVideoShow");
 const recordBtn = document.getElementById("record_Btn");
 recordBtn.disabled = true;
@@ -70,6 +74,8 @@ steupMediaSource()
 var signal;
 var peerClient;
 
+// 用于存储远端视频的 Map
+const remoteVideos = new Map();
 
 // 防止重复去获取设备列表
 var isGet = false;
@@ -172,15 +178,27 @@ async function InitPeerconnect(senderId, isOffer) {
 
     await peerClient.initPeerConnection((message, senderId) => {
         if (message.type === 'candidate') {
-            const message = {
+            const sendData = {
                 targetId: senderId,
                 type: 2,
                 candidate: message.candidate
             };
-            signal.sendMessage(room, _selfid, message);
+            signal.sendMessage(room, _selfid, sendData);
         } else if (message.type === 'track') {
-            remoteVideoPlayer.srcObject = message.stream;
+            // 从 Map 中获取对应的远端视频元素
+            const remoteVideo = remoteVideos.get(senderId);
+            if (remoteVideo) {
+                remoteVideo.srcObject = message.stream; // 设置远端视频流
+            } else {
+                const errorMsg = `No remote video found for senderId: ${senderId} remoteVideos:${Array.from(remoteVideos.keys())}`;
+                console.error(errorMsg);
+                outputArea.value += errorMsg + '\n'; // 将错误信息添加到 outputArea
+                outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
+            }
         } else if (message.type === 'iceConnectionState') {
+            const joinMsg = `iceConnectionState ${message.type} ====>`;
+            outputArea.value += joinMsg + '\n'; // 将用户加入的信息添加到 outputArea
+            outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             if (message.state === 'connected') {
                 startGraph();
                 // setTimeout(() => {
@@ -192,12 +210,12 @@ async function InitPeerconnect(senderId, isOffer) {
     }, senderId);
     if (isOffer == true) {
         peerClient.createOffer((offerSDP, senderId) => {
-            const message = {
+            const sendData = {
                 targetId: senderId,
                 type: 0,
                 sdp: offerSDP
             };
-            signal.sendMessage(room, _selfid, message);
+            signal.sendMessage(room, _selfid, sendData);
         }, senderId);
     }
 
@@ -402,10 +420,21 @@ joinBtnConnect.onclick = () => {
         signal = new Signal();
         signal.onOtherJoined((data) => {
             console.log('otherJoined :' + JSON.stringify(data));
-            _addRemoteVideo(data.senderId); // 添加远端视频
-            // 处理其他用户加入的逻辑
-            if (!peerClient.peerConnection) {
-                InitPeerconnect(data.senderId, true);
+            // 检查该用户的 peer 连接是否已经存在
+            if (!remoteVideos.has(data.senderId)) {
+                _addRemoteVideo(data.senderId); // 添加远端视频
+
+                // 处理其他用户加入的逻辑
+                InitPeerconnect(data.senderId, true); // 只有在没有连接时才初始化
+
+                const joinMsg = `User ${data.senderId} has joined the room.`;
+                outputArea.value += joinMsg + '\n'; // 将用户加入的信息添加到 outputArea
+                outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
+            } else {
+                const errorMsg = `Peer connection for user ${data.senderId} already exists.`;
+                console.log(errorMsg);
+                outputArea.value += errorMsg + '\n'; // 将错误信息添加到 outputArea
+                outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             }
         });
 
@@ -414,6 +443,9 @@ joinBtnConnect.onclick = () => {
             peerClient.close(data.senderId);
             // 移除远端视频
             _removeRemoteVideo(data.senderId);
+            const leaveMsg = `User ${data.senderId} has left the room.`;
+            outputArea.value += leaveMsg + '\n'; // 将用户离开的信息添加到 outputArea
+            outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
         });
 
 
@@ -525,8 +557,6 @@ videoBindwidthSelect.onchange = () => {
 
 };
 
-// 用于存储远端视频的 Map
-const remoteVideos = new Map();
 
 // 添加远端视频的函数
 function _addRemoteVideo(senderId) {
@@ -535,34 +565,59 @@ function _addRemoteVideo(senderId) {
         console.log(`Video for senderId ${senderId} already exists.`);
         return;
     }
+    // 获取map中视频的个数
+    var currentVideoCount = remoteVideos.size;
+    console.log(`_addRemoteVideo count:${currentVideoCount}`);
+    switch (currentVideoCount) {
+        case 0: {
+            remoteVideos.set(senderId, remoteVideoPlayer1); // 将视频存储到 Map 中
 
-    const videoContainer = document.createElement('td');
-    const remoteVideo = document.createElement('video');
-    remoteVideo.autoplay = true;
-    remoteVideo.playsInline = true;
-    remoteVideo.id = `remoteVideoPlayer_${senderId}`; // 使用 senderId 作为唯一标识
+        }
+            break;
+        case 1: {
+            remoteVideos.set(senderId, remoteVideoPlayer2); // 将视频存储到 Map 中
 
-    videoContainer.appendChild(remoteVideo);
+        }
+            break;
+        case 2: {
+            remoteVideos.set(senderId, remoteVideoPlayer3); // 将视频存储到 Map 中
 
-    // 获取当前行的所有单元格
-    const rows = videoShowTable.getElementsByTagName('tr');
-    let lastRow = rows[rows.length - 1];
+        }
+            break;
+        case 3: {
+            remoteVideos.set(senderId, remoteVideoPlayer4); // 将视频存储到 Map 中
 
-    // 如果当前行的单元格数量已满，则创建新行
-    if (lastRow.children.length >= 4) {
-        lastRow = document.createElement('tr');
-        videoShowTable.appendChild(lastRow);
+        }
+            break;
     }
 
-    lastRow.appendChild(videoContainer);
-    remoteVideos.set(senderId, remoteVideo); // 将视频存储到 Map 中
+    // const videoContainer = document.createElement('td');
+    // const remoteVideo = document.createElement('video');
+    // remoteVideo.autoplay = true;
+    // remoteVideo.playsInline = true;
+    // remoteVideo.id = `remoteVideoPlayer_${senderId}`; // 使用 senderId 作为唯一标识
+
+    // videoContainer.appendChild(remoteVideo);
+
+    // // 获取当前行的所有单元格
+    // const rows = videoShowTable.getElementsByTagName('tr');
+    // let lastRow = rows[rows.length - 1];
+
+    // // 如果当前行的单元格数量已满，则创建新行
+    // if (lastRow.children.length >= 4) {
+    //     lastRow = document.createElement('tr');
+    //     videoShowTable.appendChild(lastRow);
+    // }
+
+    // lastRow.appendChild(videoContainer);
+    // remoteVideos.set(senderId, remoteVideo); // 将视频存储到 Map 中
 }
 
 // 移除远端视频的函数
 function _removeRemoteVideo(senderId) {
     if (remoteVideos.has(senderId)) {
-        const remoteVideo = remoteVideos.get(senderId);
-        remoteVideo.parentElement.remove(); // 从 DOM 中移除视频
+        // const remoteVideo = remoteVideos.get(senderId);
+        // remoteVideo.parentElement.remove(); // 从 DOM 中移除视频
         remoteVideos.delete(senderId); // 从 Map 中删除
     }
 }
