@@ -35,6 +35,7 @@ const downloadBtn = document.getElementById("download_Btn");
 
 // 获取显示的div
 const showDiv = document.getElementById("constraints");
+const videoShowTable = document.getElementById("videShowTable");
 
 // 房间聊天功能
 var userName = document.querySelector('input#username');
@@ -171,8 +172,12 @@ async function InitPeerconnect(senderId, isOffer) {
 
     await peerClient.initPeerConnection((message, senderId) => {
         if (message.type === 'candidate') {
-
-            signal.sendMessage(room, _selfid, { targetId: senderId, type: 2, candidate: message.candidate });
+            const message = {
+                targetId: senderId,
+                type: 2,
+                candidate: message.candidate
+            };
+            signal.sendMessage(room, _selfid, message);
         } else if (message.type === 'track') {
             remoteVideoPlayer.srcObject = message.stream;
         } else if (message.type === 'iceConnectionState') {
@@ -187,7 +192,12 @@ async function InitPeerconnect(senderId, isOffer) {
     }, senderId);
     if (isOffer == true) {
         peerClient.createOffer((offerSDP, senderId) => {
-            signal.sendMessage(room, _selfid, { targetId: senderId, type: 0, sdp: offerSDP });
+            const message = {
+                targetId: senderId,
+                type: 0,
+                sdp: offerSDP
+            };
+            signal.sendMessage(room, _selfid, message);
         }, senderId);
     }
 
@@ -206,7 +216,7 @@ var graphInterval = null;
 
 
 //     结束webrtc 
-function peerCloseFun() {
+function peerCloseFun(senderId) {
     isStartRecored = false;
     if (localStream) {
         for (const track of localStream.getTracks()) {
@@ -214,7 +224,7 @@ function peerCloseFun() {
             track.stop();
         }
     }
-    peerClient.close();
+    peerClient.close(senderId);
     localStream = null;
     videoPlayer.srcObject = null;
     remoteVideoPlayer.srcObject = null;
@@ -392,17 +402,18 @@ joinBtnConnect.onclick = () => {
         signal = new Signal();
         signal.onOtherJoined((data) => {
             console.log('otherJoined :' + JSON.stringify(data));
+            _addRemoteVideo(data.senderId); // 添加远端视频
             // 处理其他用户加入的逻辑
             if (!peerClient.peerConnection) {
                 InitPeerconnect(data.senderId, true);
-
             }
         });
 
         signal.onLeaved((data) => {
             console.log('leaved :' + JSON.stringify(data));
-            // 处理用户离开的逻辑
-            peerCloseFun();
+            peerClient.close(data.senderId);
+            // 移除远端视频
+            _removeRemoteVideo(data.senderId);
         });
 
 
@@ -416,9 +427,9 @@ joinBtnConnect.onclick = () => {
 
             }, senderIdIn);
         }, (answerSdp, senderId) => {
-            peerClient.setRemoteDescription(answerSdp);
+            peerClient.setRemoteDescription(answerSdp, senderId);
         }, (candidate, senderId) => {
-            peerClient.addIceCandidate(candidate);
+            peerClient.addIceCandidate(candidate, senderId);
 
         });
         peerClient = new PeerClient(localStream);
@@ -513,3 +524,45 @@ videoBindwidthSelect.onchange = () => {
     });
 
 };
+
+// 用于存储远端视频的 Map
+const remoteVideos = new Map();
+
+// 添加远端视频的函数
+function _addRemoteVideo(senderId) {
+    // 检查视频是否已经存在
+    if (remoteVideos.has(senderId)) {
+        console.log(`Video for senderId ${senderId} already exists.`);
+        return;
+    }
+
+    const videoContainer = document.createElement('td');
+    const remoteVideo = document.createElement('video');
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+    remoteVideo.id = `remoteVideoPlayer_${senderId}`; // 使用 senderId 作为唯一标识
+
+    videoContainer.appendChild(remoteVideo);
+
+    // 获取当前行的所有单元格
+    const rows = videoShowTable.getElementsByTagName('tr');
+    let lastRow = rows[rows.length - 1];
+
+    // 如果当前行的单元格数量已满，则创建新行
+    if (lastRow.children.length >= 4) {
+        lastRow = document.createElement('tr');
+        videoShowTable.appendChild(lastRow);
+    }
+
+    lastRow.appendChild(videoContainer);
+    remoteVideos.set(senderId, remoteVideo); // 将视频存储到 Map 中
+}
+
+// 移除远端视频的函数
+function _removeRemoteVideo(senderId) {
+    if (remoteVideos.has(senderId)) {
+        const remoteVideo = remoteVideos.get(senderId);
+        remoteVideo.parentElement.remove(); // 从 DOM 中移除视频
+        remoteVideos.delete(senderId); // 从 Map 中删除
+    }
+}
