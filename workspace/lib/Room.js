@@ -30,10 +30,11 @@ class Room {
         // 通知其他用户有新用户加入
         var data = {
             roomId: this.roomId,
-            id: socket.id
+            id: socket.id,
+            senderId: userId,
         }
-        this.broadcast('otherJoined', data, userId);
-
+        this._notification(socket, 'otherJoined', data, true);
+        console.log('lym send otherJoined msg ', JSON.stringify(data));
         // 发送当前用户列表给新用户
         const userList = Array.from(this.peers.keys()).filter(id => id !== userId);
         const callBackData = {
@@ -44,10 +45,14 @@ class Room {
         };
         // 如果支持ack 返回，就使用这个返回消息到客户端
         if (ack) {
+            console.log('lym ack msg ', JSON.stringify(callBackData));
+
             ack(callBackData);
         } else {
             // 这个是为了兼容老版本
-            peer.send('joined', callBackData);
+            this._notification(socket, 'joined', callBackData, false);
+            console.log('lym send joined msg ', JSON.stringify(callBackData));
+
         }
 
 
@@ -70,8 +75,7 @@ class Room {
             roomId: this.roomId,
             userId: userId
         }
-        this.broadcast('leave', data, userId);
-
+        this._notification(peer.socket, 'leave', data, true);
         console.log(`User ${userId} left room ${this.roomId}`);
     }
 
@@ -79,7 +83,7 @@ class Room {
     handleMessage(senderId, data) {
         // 应该验证下消息的合法性，防止崩溃
         if (!data.targetId) {
-            console.error(`Target user ${targetId} not found in room ${this.roomId}`);
+            console.error(`Target user ${data.targetId} not found in room ${this.roomId}`);
             return;
         }
 
@@ -98,22 +102,23 @@ class Room {
         data.senderId = senderId;
         data.targetId = targetId;
         data.roomId = this.roomId;
-        targetPeer.send('message', data);
+        this._notification(targetPeer.socket, 'message', data, false);
 
-        console.log(`Signal from ${senderId} to ${targetId} in room ${this.roomId}:`, signal);
+        console.log(`Signal from ${senderId} to ${targetId} in room ${this.roomId}`, JSON.stringify(data));
     }
 
     // 处理聊天消息
     handleChat(senderId, data) {
+        const peer = this.peers.get(senderId);
         //复制一个data添加 id
         data = Object.assign({}, data);
         data.senderId = senderId;
         data.roomId = this.roomId;
 
         // 广播聊天消息给房间内的其他用户
-        this.broadcast('chat', data, senderId);
+        this._notification(peer.socket, 'chat', data, true);
 
-        console.log(`Chat message from ${senderId} in room ${this.roomId}:`, message);
+        console.log(`Chat message from ${senderId} in room ${this.roomId}:`, data);
     }
 
     // 处理用户离开
@@ -123,12 +128,18 @@ class Room {
     }
 
     // 广播消息
-    broadcast(event, data, excludeUserId = null) {
-        this.peers.forEach((peer, userId) => {
-            if (userId !== excludeUserId) {
-                peer.send(event, data, userId);
-            }
-        });
+    _notification(socket, method, data = {}, broadcast = false, includeSender = false) {
+        if (broadcast) {
+            socket.broadcast.to(this.roomId).emit(
+                method, data
+            );
+
+            if (includeSender)
+                socket.emit(method, data);
+        }
+        else {
+            socket.emit(method, data);
+        }
     }
 
     // 检查房间是否为空

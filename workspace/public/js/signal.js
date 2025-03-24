@@ -16,46 +16,51 @@ class Signal {
 
     onOtherJoined(callback) {
         this.socket.on('otherJoined', (data) => {
+            console.log('lym otherJoined', data);
             callback(data);
         });
     }
 
     onLeaved(callback) {
         this.socket.on('leaved', (data) => {
+            console.log('lym leaved', data);
             callback(data);
         });
     }
 
-    onMessage(offerSdpCallback, answerSdpCallback, candidateCallback) {
+    onMessage(selfid, offerSdpCallback, answerSdpCallback, candidateCallback) {
         this.socket.on('message', (data) => {
-            console.log('message data :' + JSON.stringify(data));
 
-            const id = data.id;
+            const id = data.senderId;
             if (id === selfid) {
+                console.error(`lym id errr selfid:${selfid} senderId:${senderId}`);
                 return;
             }
-            console.log('message :' + JSON.stringify(data));
             const type = data.type;
             switch (type) {
                 case 0: {// offer
                     const { senderId, sdp } = data;
+                    console.log('lym  recv offer sdp ' + JSON.stringify(data.sdp));
+
                     if (offerSdpCallback) {
                         offerSdpCallback(sdp, senderId);
                     }
                 }
                     break;
                 case 1: {// answer
-                    console.log('offer setRemoteDescription' + JSON.stringify(data.sdp));
-                    const { senderId, sdp: answerSdp } = data;
+                    const { senderId, sdp } = data;
+                    console.log('lym  recv answer sdp ' + JSON.stringify(data.sdp));
+
                     if (answerSdpCallback) {
-                        answerSdpCallback(answerSdp, senderId);
+                        answerSdpCallback(sdp, senderId);
                     }
                 }
                     break;
                 case 2: {// candidate
-                    const { senderId: candidateSenderId, candidate } = data;
+                    const { senderId, candidate } = data;
+                    console.log('lym  recv candidate sdp ' + JSON.stringify(data.candidate));
                     if (candidateCallback) {
-                        candidateCallback(candidate, candidateSenderId);
+                        candidateCallback(candidate, senderId);
                     }
                 }
                     break;
@@ -68,7 +73,8 @@ class Signal {
 
     sendMessage(room, userId, data) {
         data.roomId = room;
-        data.userId = userId;
+        data.senderId = userId;
+        console.log("lym sendMessage data:", JSON.stringify(data));
         this.socket.emit('message', data);
     }
 

@@ -29,38 +29,43 @@ httpsServer.listen(443, '0.0.0.0', () => {
 // httpServer.listen(80, '0.0.0.0', () => {
 //     console.log('httpServer running on port: ', 80);
 // });
-// 绑定 Socket.IO
-const io = socketIo(httpsServer);
 
-// 全局房间管理器
-const rooms = new Map();
+async function runWebSocketServer() {
+    // 绑定 Socket.IO
+    const io = socketIo(httpsServer, { cookie: false });
 
-// 处理 Socket.IO 连接
-io.on('connection', (socket) => {
-    console.log('New connection:', socket.id);
+    // 全局房间管理器
+    const rooms = new Map();
 
-    // 加入房间
-    socket.on('join', (data, ack) => {
-        const { roomId, userId } = data;
-        console.log(`server User ${userId} joining room ${roomId}`);
+    // 处理 Socket.IO 连接
+    io.on('connection', (socket) => {
+        console.log('New connection:', socket.id);
 
-        // 获取或创建房间
-        var room = rooms.get(roomId);
-        if (!room) {
-            room = new Room(roomId);
-            rooms.set(roomId, room);
-        }
+        // 加入房间
+        socket.on('join', (data, ack) => {
+            const { roomId, userId } = data;
+            console.log(`server User ${userId} joining room ${roomId}`);
 
-        // 将用户加入房间
-        room.addPeer(socket, userId, ack);
-
-        // 监听断开连接
-        socket.on('disconnect', () => {
-            room.removePeer(userId);
-            if (room.isEmpty()) {
-                rooms.delete(roomId);
-                console.log(`Room ${roomId} deleted (no users left)`);
+            // 获取或创建房间
+            var room = rooms.get(roomId);
+            if (!room) {
+                room = new Room(roomId);
+                rooms.set(roomId, room);
             }
+
+            // 将用户加入房间
+            room.addPeer(socket, userId, ack);
+
+            // 监听断开连接
+            socket.on('disconnect', () => {
+                room.removePeer(userId);
+                if (room.isEmpty()) {
+                    rooms.delete(roomId);
+                    console.log(`Room ${roomId} deleted (no users left)`);
+                }
+            });
         });
     });
-});
+}
+
+runWebSocketServer()

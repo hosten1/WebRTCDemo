@@ -54,12 +54,20 @@ var videoBindwidthSelect = document.getElementById('videoBindwidth');
 // var birateCanvas  = document.getElementById('birateCanvas');
 // var packetsCanvas = document.getElementById('packetsCanvas');
 var localStream;
+async function steupMediaSource() {
+    console.log('lym init steupMediaSource 0 ========>');
 
-getUserMedia();
-startWebCam();
+    if (!localStream) {
+        console.log('lym init steupMediaSource 1 ========>');
+        await getUserMedia();
+        await startWebCam();
 
-const signal = new Signal();
-const peerClient = new PeerClient(localStream);
+    }
+}
+steupMediaSource()
+
+var signal;
+var peerClient;
 
 
 // 防止重复去获取设备列表
@@ -85,7 +93,7 @@ function startWebCam() {
             // 想要获取一个最接近 1280x720 的相机分辨率
             const videoDeviceIds = videoSource.value;
             const audioDeviceIds = audioSource.value;
-            console.log('刷新了 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
+            console.log('开始获取 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
             var constraints = {
                 audio: {
                     noiseSuppression: true, // 降噪
@@ -115,7 +123,7 @@ function startWebCam() {
                 videoPlayer.onloadedmetadata = function (e) {
                     videoPlayer.play();
                 };
-                console.log('刷新了 3333 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
+                console.log('结束获取 videoDeviceIds = ' + videoDeviceIds + ' audioDeviceIds = ' + audioDeviceIds);
 
                 // 获取权限后开始获取设备
                 return resolve(mediaStream);
@@ -132,10 +140,10 @@ function getUserMedia() {
             if (!isGet) {
                 isGet = true;
                 devices.forEach((devInfo) => {
-                    console.log('kind = ' + devInfo.kind
-                        + ' lable = ' + devInfo.label
-                        + ' id = ' + devInfo.deviceId
-                        + ' groupId = ', devInfo.groupId);
+                    // console.log('kind = ' + devInfo.kind
+                    //     + ' lable = ' + devInfo.label
+                    //     + ' id = ' + devInfo.deviceId
+                    //     + ' groupId = ', devInfo.groupId);
 
                     var option = document.createElement('option');
                     option.text = devInfo.label;
@@ -154,63 +162,17 @@ function getUserMedia() {
     });
 }
 
-signal.onOtherJoined((data) => {
-    console.log('otherJoined :' + JSON.stringify(data));
-    // 处理其他用户加入的逻辑
-    InitPeerconnect();
-});
-
-signal.onLeaved((data) => {
-    console.log('leaved :' + JSON.stringify(data));
-    // 处理用户离开的逻辑
-    peerCloseFun();
-});
-
-
-signal.onMessage((offerSdp, senderId) => {
-    peerClient.createAnswer(offerSdp, (answerSDP) => {
-        // if (socket) {
-        //     await socket.emit('message', {
-        //         roomId: room,
-        //         id: selfid,
-        //         type: 1,
-        //         sdp: answerSDP
-        //     });
-        //     console.log('=======> send answerSDP:' + answerSDP);
-        // }
-        signal.sendMessage(room, _selfid, { type: 0, sdp: answerSDP });
-
-    });
-}, (answerSdp, senderId) => {
-    peerClient.setRemoteDescription(answerSdp);
-}, (candidate, senderId) => {
-    peerClient.addcandidateFUN(candidate);
-
-});
-
 // 使用 peerClient 处理 WebRTC 逻辑
-async function InitPeerconnect() {
+async function InitPeerconnect(senderId, isOffer) {
     // console.log('开始初始化摄像头。。。。');
     // await startWebCam();
     // await getUserMedia();
     // console.log('结束初始化摄像头。。。。');
 
-    await peerClient.initPeerConnection((message) => {
+    await peerClient.initPeerConnection((message, senderId) => {
         if (message.type === 'candidate') {
-            // if (socket) {
-            //     if (ev.candidate) {
-            //         await socket.emit('message', {
-            //             roomId: room,
-            //             id: selfid,
-            //             type: 2,
-            //             candidate: ev.candidate
-            //         }, (data) => {
-            //             console.log('发送成功了 ' + JSON.stringify(data));
-            //         });
-            //     }
 
-            // }
-            signal.sendMessage(room, _selfid, { type: 2, candidate: message.candidate });
+            signal.sendMessage(room, _selfid, { targetId: senderId, type: 2, candidate: message.candidate });
         } else if (message.type === 'track') {
             remoteVideoPlayer.srcObject = message.stream;
         } else if (message.type === 'iceConnectionState') {
@@ -222,10 +184,13 @@ async function InitPeerconnect() {
                 // }, 5000);
             }
         }
-    });
-    peerClient.createOffer((offerSDP) => {
-        signal.sendMessage(room, _selfid, { type: 0, sdp: offerSDP });
-    });
+    }, senderId);
+    if (isOffer == true) {
+        peerClient.createOffer((offerSDP, senderId) => {
+            signal.sendMessage(room, _selfid, { targetId: senderId, type: 0, sdp: offerSDP });
+        }, senderId);
+    }
+
 }
 var bitrateGraph;
 var bitrateSeries;
@@ -255,7 +220,7 @@ function peerCloseFun() {
     remoteVideoPlayer.srcObject = null;
 
     isSetRemote = false;
-    isOffer = true;
+    //    isOffer = true;
     recvSdp = null;
     inputArea.value = '';
     videoBindwidthSelect.disabled = true;
@@ -422,6 +387,43 @@ downloadBtn.onclick = async () => {
 
 // 加入房间按钮
 joinBtnConnect.onclick = () => {
+    if (!signal) {
+        console.log('lym init socket ========>');
+        signal = new Signal();
+        signal.onOtherJoined((data) => {
+            console.log('otherJoined :' + JSON.stringify(data));
+            // 处理其他用户加入的逻辑
+            if (!peerClient.peerConnection) {
+                InitPeerconnect(data.senderId, true);
+
+            }
+        });
+
+        signal.onLeaved((data) => {
+            console.log('leaved :' + JSON.stringify(data));
+            // 处理用户离开的逻辑
+            peerCloseFun();
+        });
+
+
+        signal.onMessage(_selfid, (offerSdp, senderIdIn) => {
+            if (!peerClient.peerConnection) {
+                InitPeerconnect(senderIdIn, false);
+
+            }
+            peerClient.createAnswer(offerSdp, (answerSDP, senderIdIn,) => {
+                signal.sendMessage(room, _selfid, { targetId: senderIdIn, type: 1, sdp: answerSDP });
+
+            }, senderIdIn);
+        }, (answerSdp, senderId) => {
+            peerClient.setRemoteDescription(answerSdp);
+        }, (candidate, senderId) => {
+            peerClient.addIceCandidate(candidate);
+
+        });
+        peerClient = new PeerClient(localStream);
+    }
+
     // Ensure _selfid and room are defined correctly
     console.log('Joining room:', room, 'with user ID:', _selfid); // Debugging line
     signal.join({
@@ -432,14 +434,14 @@ joinBtnConnect.onclick = () => {
         console.log('Join response data:', data); // Debugging line
         const { id, roomId, targetId, userList } = data;
 
-        btnConnect.disabled = true;
+        joinBtnConnect.disabled = true;
         btnLeave.disabled = false;
         inputArea.disabled = false;
         btnSend.disabled = false;
         recordBtn.disabled = false;
         snapshotBtn.disabled = false;
         // 初始化为webrtc 相关 这里只要对方一加入就 启动webrtc
-        isOffer = true;
+        //        isOffer = true;
     });
 }
 

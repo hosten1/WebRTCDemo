@@ -25,7 +25,7 @@ class PeerClient {
     }
 
 
-    async initPeerConnection(callback) {
+    async initPeerConnection(callback, senderId) {
         this.peerConnection = new RTCPeerConnection(this._config);
         // Add event listeners for the peer connection
         const opt = {
@@ -69,18 +69,17 @@ class PeerClient {
             this.peerConnection.addTrack(track);
         }
         this.peerConnection.onicecandidate = (ev) => {
-            console.log('=======> send onicecandidate:' + JSON.stringify(ev.candidate));
             if (ev.candidate) {
-                callback({ type: 'candidate', candidate: ev.candidate });
+                callback({ type: 'candidate', candidate: ev.candidate }, senderId);
             }
         };
         this.peerConnection.ontrack = (ev) => {
             if (ev.streams && ev.streams[0]) {
-                callback({ type: 'track', stream: ev.streams[0] });
+                callback({ type: 'track', stream: ev.streams[0] }, senderId);
             } else {
                 const inboundStream = new MediaStream();
                 inboundStream.addTrack(ev.track);
-                callback({ type: 'track', stream: inboundStream });
+                callback({ type: 'track', stream: inboundStream }, senderId);
             }
             // if (trackEvent.track.kind === 'video') {
             //     remoteVideoPlayer.srcObject = trackEvent[0];
@@ -89,7 +88,7 @@ class PeerClient {
         };
     }
 
-    async createOffer(callback) {
+    async createOffer(callback, senderId) {
         const offerOption = {
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
@@ -101,14 +100,14 @@ class PeerClient {
             console.error('setLocalDescription error: ' + JSON.stringify(errLocalDescription));
             return;
         }
-        callback({ type: 'offer', sdp: offerSdp });
+        callback(offerSdp, senderId);
     }
-    async createAnswer(recvSdp, callback) {
+    async createAnswer(recvSdp, callback, senderId) {
         const answerOption = {
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
         };
-        console.log('Answer received: ' + JSON.stringify(recvSdp));
+        // console.log('Answer received: ' + JSON.stringify(recvSdp));
         const errSetRD = await this.peerConnection.setRemoteDescription(recvSdp);
         if (errSetRD) {
             console.error('setRemoteDescription error: ' + JSON.stringify(errSetRD));
@@ -124,7 +123,7 @@ class PeerClient {
             return;
         }
 
-        callback({ type: 'answer', sdp: answerSdp });
+        callback(answerSdp, senderId);
     }
 
     async setRemoteDescription(sdp) {
