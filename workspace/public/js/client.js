@@ -59,6 +59,26 @@ var videoBindwidthSelect = document.getElementById('videoBindwidth');
 // var birateCanvas  = document.getElementById('birateCanvas');
 // var packetsCanvas = document.getElementById('packetsCanvas');
 var localStream;
+
+function _renderOwenrIdToLocalVideoRender() {
+    // 设置不同的背景颜色
+    videoPlayer.style.backgroundColor = '#FFFFFF'; // 循环使用颜色
+
+    // 创建一个显示 senderId 的标签
+    const senderIdLabel = document.createElement('div');
+    senderIdLabel.textContent = "自己:" + _selfid;
+    senderIdLabel.style.position = 'absolute';
+    senderIdLabel.style.color = 'white';
+    senderIdLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; // 半透明背景
+    senderIdLabel.style.padding = '2px';
+    senderIdLabel.style.borderRadius = '3px';
+    senderIdLabel.style.top = '5px';
+    senderIdLabel.style.left = '5px';
+
+    // 将 senderId 标签添加到视频元素中
+    videoPlayer.parentElement.style.position = 'relative'; // 确保父元素为相对定位
+    videoPlayer.parentElement.appendChild(senderIdLabel); // 将标签添加到视频的父元素中
+}
 async function steupMediaSource() {
     console.log('lym init steupMediaSource 0 ========>');
 
@@ -68,8 +88,9 @@ async function steupMediaSource() {
         await startWebCam();
 
     }
+    _renderOwenrIdToLocalVideoRender();
 }
-steupMediaSource()
+
 
 var signal;
 var peerClient;
@@ -82,6 +103,8 @@ var isGet = false;
 // 随机生成一个用户id  '9215' + 16位随机数，不可以修改
 
 const _selfid = '9215' + Math.random().toString(36).slice(2, 18);
+
+steupMediaSource();
 
 function randomString(length) {
     var str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -175,7 +198,7 @@ async function InitPeerconnect(senderId, isOffer) {
     // await startWebCam();
     // await getUserMedia();
     // console.log('结束初始化摄像头。。。。');
-
+    _addRemoteVideo(senderId);
     await peerClient.initPeerConnection((message, senderId) => {
         if (message.type === 'candidate') {
             const sendData = {
@@ -196,11 +219,11 @@ async function InitPeerconnect(senderId, isOffer) {
                 outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             }
         } else if (message.type === 'iceConnectionState') {
-            const joinMsg = `iceConnectionState ${message.type} ====>`;
+            const joinMsg = `iceConnectionState: ${message.iceConnectionState}`;
             outputArea.value += joinMsg + '\n'; // 将用户加入的信息添加到 outputArea
             outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             if (message.state === 'connected') {
-                startGraph();
+                startGraph(senderId);
                 // setTimeout(() => {
                 //     // RTCDataChannel
                 //     sendDC.send('你好 我是 ' + selfid);
@@ -232,6 +255,8 @@ var bitrateRecvSeries;
 var lastResult;
 var graphInterval = null;
 
+var isStartGraph = false;
+
 
 //     结束webrtc 
 function peerCloseFun(senderId) {
@@ -258,7 +283,11 @@ function peerCloseFun(senderId) {
     }
 }
 
-async function startGraph() {
+async function startGraph(senderId) {
+    if (isStartGraph == true) {
+        return;
+    }
+    isStartGraph = true;
     var vSender = null;
     var aSender = null;
     bitrateSeries = new TimelineDataSeries();
@@ -273,7 +302,7 @@ async function startGraph() {
     bitrateRecvGraph = new TimelineGraphView('bitrateRecvtGraph', 'bitrateRecvCanvas');
     bitrateRecvGraph.updateEndDate();
     // 从peer connection中获取senders 然后遍历查找到视频的sender
-    peerconnetion.getSenders().forEach(sender => {
+    peerClient.peerConnections[senderId].getSenders().forEach(sender => {
         if (sender && sender.track.kind === 'video') {
             vSender = sender;
         }
@@ -421,7 +450,7 @@ joinBtnConnect.onclick = () => {
         signal.onOtherJoined((data) => {
             console.log('otherJoined :' + JSON.stringify(data));
             // 检查该用户的 peer 连接是否已经存在
-            if (!remoteVideos.has(data.senderId)) {
+            if (!peerClient.peerConnections.has(data.senderId)) {
                 _addRemoteVideo(data.senderId); // 添加远端视频
 
                 // 处理其他用户加入的逻辑
@@ -490,29 +519,22 @@ joinBtnConnect.onclick = () => {
 
 btnSend.onclick = () => {
     var data = inputArea.value;
-    data = userName.value + ':' + data;
-    socket.emit('chat', room, data);
+    data = _selfid + ':' + data;
+    signal.sendChat(room, _selfid, { data })
     inputArea.value = '';
 }
 
 btnLeave.onclick = () => {
-    room = inputRoom.value;
-    socket.emit('leave', {
-        roomId: room,
-        id: selfid
-    });
+    var room = inputRoom.value;
+    signal.leave(room, _selfid);
 }
 
 inputArea.onkeypress = (event) => {
     //event = event || window.event;
     if (event.keyCode == 13) { //回车发送消息
         var data = inputArea.value;
-        data = userName.value + ':' + data;
-        socket.emit('chat', {
-            roomId: room,
-            id: selfid,
-            data
-        });
+        data = _selfid + ':' + data;
+        signal.sendChat(room, _selfid, { data })
         inputArea.value = '';
         event.preventDefault();//阻止默认行为
     }
@@ -565,52 +587,52 @@ function _addRemoteVideo(senderId) {
         console.log(`Video for senderId ${senderId} already exists.`);
         return;
     }
+
     // 获取map中视频的个数
     var currentVideoCount = remoteVideos.size;
     console.log(`_addRemoteVideo count:${currentVideoCount}`);
+
+    // 根据当前视频数量选择对应的预先创建的 video 元素
+    let remoteVideo;
     switch (currentVideoCount) {
-        case 0: {
-            remoteVideos.set(senderId, remoteVideoPlayer1); // 将视频存储到 Map 中
-
-        }
+        case 0:
+            remoteVideo = remoteVideoPlayer1;
             break;
-        case 1: {
-            remoteVideos.set(senderId, remoteVideoPlayer2); // 将视频存储到 Map 中
-
-        }
+        case 1:
+            remoteVideo = remoteVideoPlayer2;
             break;
-        case 2: {
-            remoteVideos.set(senderId, remoteVideoPlayer3); // 将视频存储到 Map 中
-
-        }
+        case 2:
+            remoteVideo = remoteVideoPlayer3;
             break;
-        case 3: {
-            remoteVideos.set(senderId, remoteVideoPlayer4); // 将视频存储到 Map 中
-
-        }
+        case 3:
+            remoteVideo = remoteVideoPlayer4;
             break;
+        default:
+            console.error('Maximum number of remote videos reached.');
+            return; // 超过最大数量，返回
     }
 
-    // const videoContainer = document.createElement('td');
-    // const remoteVideo = document.createElement('video');
-    // remoteVideo.autoplay = true;
-    // remoteVideo.playsInline = true;
-    // remoteVideo.id = `remoteVideoPlayer_${senderId}`; // 使用 senderId 作为唯一标识
+    // 设置不同的背景颜色
+    const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33']; // 预定义颜色数组
+    remoteVideo.style.backgroundColor = colors[currentVideoCount % colors.length]; // 循环使用颜色
 
-    // videoContainer.appendChild(remoteVideo);
+    // 创建一个显示 senderId 的标签
+    const senderIdLabel = document.createElement('div');
+    senderIdLabel.textContent = senderId;
+    senderIdLabel.style.position = 'absolute';
+    senderIdLabel.style.color = 'white';
+    senderIdLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; // 半透明背景
+    senderIdLabel.style.padding = '2px';
+    senderIdLabel.style.borderRadius = '3px';
+    senderIdLabel.style.top = '5px';
+    senderIdLabel.style.left = '5px';
 
-    // // 获取当前行的所有单元格
-    // const rows = videoShowTable.getElementsByTagName('tr');
-    // let lastRow = rows[rows.length - 1];
+    // 将 senderId 标签添加到视频元素中
+    remoteVideo.parentElement.style.position = 'relative'; // 确保父元素为相对定位
+    remoteVideo.parentElement.appendChild(senderIdLabel); // 将标签添加到视频的父元素中
 
-    // // 如果当前行的单元格数量已满，则创建新行
-    // if (lastRow.children.length >= 4) {
-    //     lastRow = document.createElement('tr');
-    //     videoShowTable.appendChild(lastRow);
-    // }
-
-    // lastRow.appendChild(videoContainer);
-    // remoteVideos.set(senderId, remoteVideo); // 将视频存储到 Map 中
+    // 将视频存储到 Map 中
+    remoteVideos.set(senderId, remoteVideo);
 }
 
 // 移除远端视频的函数

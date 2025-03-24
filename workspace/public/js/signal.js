@@ -78,8 +78,15 @@ class Signal {
         this.socket.emit('message', data);
     }
 
+    sendChat(room, userId, data) {
+        data.roomId = room;
+        data.senderId = userId;
+        console.log("lym sendMessage data:", JSON.stringify(data));
+        this.socket.emit('message', data);
+    }
+
     leave(room, userId) {
-        this.socket.emit('leave', { roomId: room, id: userId });
+        this.socket.emit('leave', { roomId: room, senderId: userId });
     }
 }
 

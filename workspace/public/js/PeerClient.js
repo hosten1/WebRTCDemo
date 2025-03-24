@@ -72,7 +72,7 @@ class PeerClient {
 
         peerConnection.oniceconnectionstatechange = () => {
             if (peerConnection.iceConnectionState === 'connected') {
-                callback({ type: 'iceConnectionState', candidate: peerConnection.iceConnectionState });
+                callback({ type: 'iceConnectionState', iceConnectionState: peerConnection.iceConnectionState });
             }
         };
         //添加本地媒体流
