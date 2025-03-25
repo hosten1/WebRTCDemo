@@ -232,7 +232,7 @@ async function InitPeerconnect(senderId, isOffer) {
         }
     }, senderId);
     if (isOffer == true) {
-        peerClient.createOffer((offerSDP, senderId) => {
+        await peerClient.createOffer((offerSDP, senderId) => {
             const sendData = {
                 targetId: senderId,
                 type: 0,
@@ -443,18 +443,18 @@ downloadBtn.onclick = async () => {
 }
 
 // 加入房间按钮
-joinBtnConnect.onclick = () => {
+joinBtnConnect.onclick = async () => {
     if (!signal) {
         console.log('lym init socket ========>');
         signal = new Signal();
-        signal.onOtherJoined((data) => {
+        signal.onOtherJoined(async (data) => {
             console.log('otherJoined :' + JSON.stringify(data));
             // 检查该用户的 peer 连接是否已经存在
             if (!peerClient.peerConnections.has(data.senderId)) {
                 _addRemoteVideo(data.senderId); // 添加远端视频
 
                 // 处理其他用户加入的逻辑
-                InitPeerconnect(data.senderId, true); // 只有在没有连接时才初始化
+                await InitPeerconnect(data.senderId, true); // 只有在没有连接时才初始化
 
                 const joinMsg = `User ${data.senderId} has joined the room.`;
                 outputArea.value += joinMsg + '\n'; // 将用户加入的信息添加到 outputArea
@@ -478,19 +478,19 @@ joinBtnConnect.onclick = () => {
         });
 
 
-        signal.onMessage(_selfid, (offerSdp, senderIdIn) => {
-            if (!peerClient.peerConnection) {
-                InitPeerconnect(senderIdIn, false);
+        signal.onMessage(_selfid, async (offerSdp, senderIdIn) => {
+            if (!peerClient.peerConnections.has(senderIdIn)) {
+                await InitPeerconnect(senderIdIn, false);
 
             }
-            peerClient.createAnswer(offerSdp, (answerSDP, senderIdIn,) => {
+            await peerClient.createAnswer(offerSdp, (answerSDP, senderIdIn,) => {
                 signal.sendMessage(room, _selfid, { targetId: senderIdIn, type: 1, sdp: answerSDP });
 
             }, senderIdIn);
-        }, (answerSdp, senderId) => {
-            peerClient.setRemoteDescription(answerSdp, senderId);
-        }, (candidate, senderId) => {
-            peerClient.addIceCandidate(candidate, senderId);
+        }, async (answerSdp, senderId) => {
+            await peerClient.setRemoteDescription(answerSdp, senderId);
+        }, async (candidate, senderId) => {
+            await peerClient.addIceCandidate(candidate, senderId);
 
         });
         peerClient = new PeerClient(localStream);

@@ -157,28 +157,28 @@ class PeerClient {
         this._addcandidateFUN(senderId);
 
     }
-    addIceCandidate(candidate, senderId) {
+    async addIceCandidate(candidate, senderId) {
         console.log('addIceCandidate with senderId:' + senderId);
 
         const connectionData = this.peerConnections.get(senderId);
 
         if (connectionData._isSetRemote) {
             connectionData._cacheCandidateMsg.push(candidate);
-            this._addcandidateFUN(senderId);
+            await this._addcandidateFUN(senderId);
         } else {
             connectionData._cacheCandidateMsg.push(candidate);
         }
     }
 
-    _addcandidateFUN(remoteId) {
+    async _addcandidateFUN(remoteId) {
         const connectionData = this.peerConnections.get(remoteId);
         if (!connectionData) {
             console.error(`No connection data found for remoteId: ${remoteId}`);
             console.error('Current peerConnections keys:', Array.from(this.peerConnections.keys())); // 输出所有的键值
             return; // 如果没有找到连接数据，直接返回
         }
-        connectionData._cacheCandidateMsg.forEach((item) => {
-            connectionData.peerConnection.addIceCandidate(item).catch(err => {
+        connectionData._cacheCandidateMsg.forEach(async (item) => {
+            await connectionData.peerConnection.addIceCandidate(item).catch(err => {
                 console.error('Failed to add ICE candidate: ', err);
             });
         });
