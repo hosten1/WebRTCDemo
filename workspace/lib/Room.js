@@ -75,7 +75,7 @@ class Room {
             roomId: this.roomId,
             userId: userId
         }
-        this._notification(peer.socket, 'leave', data, true);
+        this._notification(peer.socket, 'leaved', data, true);
         console.log(`User ${userId} left room ${this.roomId}`);
     }
 
@@ -104,7 +104,7 @@ class Room {
         data.roomId = this.roomId;
         this._notification(targetPeer.socket, 'message', data, false);
 
-        console.log(`Signal from ${senderId} to ${targetId} in room ${this.roomId}`, JSON.stringify(data));
+        // console.log(`Signal from ${senderId} to ${targetId} in room ${this.roomId}`, JSON.stringify(data));
     }
 
     // 处理聊天消息
