@@ -40,7 +40,7 @@ class Signal {
             switch (type) {
                 case 0: {// offer
                     const { senderId, sdp } = data;
-                    console.log('lym  recv offer sdp ' + JSON.stringify(data.sdp));
+                    console.log('lym  recv offer sdp ' + JSON.stringify(data));
 
                     if (offerSdpCallback) {
                         offerSdpCallback(sdp, senderId);
@@ -49,7 +49,7 @@ class Signal {
                     break;
                 case 1: {// answer
                     const { senderId, sdp } = data;
-                    console.log('lym  recv answer sdp ' + JSON.stringify(data.sdp));
+                    console.log('lym  recv answer sdp ' + JSON.stringify(data));
 
                     if (answerSdpCallback) {
                         answerSdpCallback(sdp, senderId);
@@ -58,7 +58,7 @@ class Signal {
                     break;
                 case 2: {// candidate
                     const { senderId, candidate } = data;
-                    console.log('lym  recv candidate sdp ' + JSON.stringify(data.candidate));
+                    console.log('lym  recv candidate sdp ' + JSON.stringify(data));
                     if (candidateCallback) {
                         candidateCallback(candidate, senderId);
                     }
