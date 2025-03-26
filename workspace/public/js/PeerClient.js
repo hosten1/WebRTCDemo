@@ -9,6 +9,7 @@ class PeerClient {
             // iceCandidatePoolSize?: number;
             // iceTransportPolicy: "all",//  public relay
             // rtcpMuxPolicy: 'negotiate',
+            // sdpSemantics: 'plan-b', // 明确指定 plan-b 模式
             iceServers: [
                 {
                     urls: "turn:39.97.110.12:3478",
