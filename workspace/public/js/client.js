@@ -219,7 +219,7 @@ async function InitPeerconnect(senderId, isOffer) {
                 outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             }
         } else if (message.type === 'iceConnectionState') {
-            const joinMsg = `iceConnectionState: ${message.iceConnectionState}`;
+            const joinMsg = `senderId:${senderId} iceConnectionState: ${message.iceConnectionState}`;
             outputArea.value += joinMsg + '\n'; // 将用户加入的信息添加到 outputArea
             outputArea.scrollTop = outputArea.scrollHeight; // 滚动到最新信息
             if (message.state === 'connected') {

@@ -72,9 +72,9 @@ class PeerClient {
         };
 
         peerConnection.oniceconnectionstatechange = () => {
-            if (peerConnection.iceConnectionState === 'connected') {
-                callback({ type: 'iceConnectionState', iceConnectionState: peerConnection.iceConnectionState });
-            }
+
+            callback({ type: 'iceConnectionState', iceConnectionState: peerConnection.iceConnectionState }, senderId);
+
         };
         //添加本地媒体流
         for (const track of this._localStream.getTracks()) {
