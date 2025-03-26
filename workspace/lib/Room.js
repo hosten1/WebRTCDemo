@@ -4,6 +4,25 @@ const Peer = require('./Peer');
 //引入log4js
 const log4js = require('log4js');
 
+// 配置log4js显示文件名、函数名和行数
+log4js.configure({
+    appenders: {
+        console: {
+            type: 'console',
+            layout: {
+                type: 'pattern',
+                pattern: '%d{yyyy-MM-dd hh:mm:ss.SSS} [%p] %f:%l %c - %m'
+            }
+        }
+    },
+    categories: {
+        default: {
+            appenders: ['console'],
+            level: 'info',
+            enableCallStack: true
+        }
+    }
+});
 
 const MAX_PEERS = 6;
 
@@ -11,7 +30,7 @@ class Room {
     constructor(roomId) {
         this.roomId = roomId; // 房间的唯一标识
         this.peers = new Map(); // userId -> Peer 实例
-        this.logger = log4js.getLogger(); // 创建日志记录器
+        this.logger = log4js.getLogger('Room'); // 创建日志记录器并指定类别名
     }
 
     // 添加对等端
