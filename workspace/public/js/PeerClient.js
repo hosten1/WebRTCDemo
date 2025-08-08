@@ -12,9 +12,9 @@ class PeerClient {
             // sdpSemantics: 'plan-b', // 明确指定 plan-b 模式
             iceServers: [
                 {
-                    urls: "turn:39.97.110.12:3478",
+                    urls: "turn:8.137.17.218:3478",
                     username: "lym",
-                    credential: "123456"
+                    credential: "lym123456"
                 }
             ]
         };
@@ -110,6 +110,17 @@ class PeerClient {
             'googNumSimulcastLayers': 1,
         };
         const offerSdp = await peerConnection.createOffer(offerOption);
+               
+        const canUseH265 = RTCRtpSender.getCapabilities('video').codecs.some(
+		    codec => codec.mimeType === 'video/H265' || codec.mimeType === 'video/HEVC'
+		);
+		
+		if (canUseH265) {
+			 // 修改 SDP - 指定优先编解码器
+		    offerSdp.sdp = await setPreferredCodec(offerSdp.sdp, 'video', 'H265');
+		} else {
+		    console.warn("浏览器不支持 H.265，使用默认编解码器");
+		}
         const errLocalDescription = await peerConnection.setLocalDescription(offerSdp);
         if (errLocalDescription) {
             console.error('createOffer error: ' + JSON.stringify(errLocalDescription));
@@ -117,6 +128,49 @@ class PeerClient {
         }
         callback(offerSdp, senderId);
     }
+    // 设置优先编解码器的辅助函数
+async setPreferredCodec(sdp, mediaType, codecName) {
+  const lines = sdp.split('\n');
+  let mLineIndex = -1;
+  
+  // 查找媒体行 (m=video)
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith(`m=${mediaType}`)) {
+      mLineIndex = i;
+      break;
+    }
+  }
+  
+  if (mLineIndex === -1) return sdp;
+  
+  // 提取编解码器 payload 类型
+  const codecRegex = new RegExp(`a=rtpmap:(\\d+) ${codecName}`);
+  let payloadType = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(codecRegex);
+    if (match) {
+      payloadType = match[1];
+      break;
+    }
+  }
+  
+  if (!payloadType) return sdp;
+  
+  // 重新排序编解码器 - 将指定编解码器移到首位
+  const mLineParts = lines[mLineIndex].split(' ');
+  const newMLine = [mLineParts[0], mLineParts[1], mLineParts[2], payloadType];
+  
+  // 添加其他编解码器（可选）
+  for (let i = 3; i < mLineParts.length; i++) {
+    if (mLineParts[i] !== payloadType) {
+      newMLine.push(mLineParts[i]);
+    }
+  }
+  
+  lines[mLineIndex] = newMLine.join(' ');
+  return lines.join('\n');
+}
     async createAnswer(recvSdp, callback, senderId) {
         const connectionData = this.peerConnections.get(senderId);
         const peerConnection = connectionData.peerConnection;

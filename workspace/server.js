@@ -21,6 +21,9 @@ app.get('/', (req, res) => {
 
 // 创建 HTTPS 服务器
 const httpsServer = https.createServer(tlsOptions, app);
+httpServer.listen(80, '0.0.0.0', () => {
+    console.log('httpServer running on port: ', 80);
+});
 httpsServer.listen(443, '0.0.0.0', () => {
     console.log('HTTPS server running on port 443');
 });
@@ -32,8 +35,15 @@ httpsServer.listen(443, '0.0.0.0', () => {
 
 async function runWebSocketServer() {
     // 绑定 Socket.IO
-    const io = socketIo(httpsServer, { cookie: false });
-
+    const io = socketIo(httpsServer, { cookie: false,
+                                        cors: {
+                                            origin: "*", // 允许所有来源
+                                            methods: ["GET", "POST"],
+                                            credentials: true
+                                        },
+                                        transports: ['websocket', 'polling'], // 启用两种传输方式
+                                        allowEIO3: true // 兼容旧版客户端
+                                        });
     // 全局房间管理器
     const rooms = new Map();
 
